@@ -37,7 +37,7 @@
             {
               "id": "f1a2b3c4-0000-4000-8000-000000000001",
               "leftValue": "={{ $json.message.from.id }}",
-              "rightValue": 0,
+              "rightValue": "={{ $('Owner ID').item.json.owner_chat_id }}",
               "operator": {
                 "type": "number",
                 "operation": "equals"
@@ -343,7 +343,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Receive Message').item.json.message.chat.id }}",
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
         "text": "={{ $json.output }}",
         "additionalFields": {
           "appendAttribution": false
@@ -389,7 +389,7 @@
     {
       "parameters": {
         "operation": "sendAudio",
-        "chatId": "={{ $('Receive Message').item.json.message.chat.id }}",
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
         "binaryData": true,
         "additionalFields": {}
       },
@@ -692,7 +692,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const out = ($json.output || '').toString();\nconst start = out.indexOf('```email');\nlet emailRequested = false, to = '', subject = '', body = '', message = out;\nif (start !== -1) {\n  const after = out.slice(start + 8);\n  const end = after.indexOf('```');\n  const block = end === -1 ? after : after.slice(0, end);\n  const bodyLines = [];\n  let inBody = false;\n  for (const raw of block.split('\\n')) {\n    const line = raw.trim();\n    const low = line.toLowerCase();\n    if (!inBody && low.startsWith('to:')) to = raw.slice(raw.indexOf(':') + 1).trim();\n    else if (!inBody && low.startsWith('subject:')) subject = raw.slice(raw.indexOf(':') + 1).trim();\n    else if (!inBody && low.startsWith('body:')) { inBody = true; bodyLines.push(raw.slice(raw.indexOf(':') + 1)); }\n    else if (inBody) bodyLines.push(raw);\n  }\n  body = bodyLines.join('\\n').trim();\n  emailRequested = to.length > 0;\n  const fenceEnd = end === -1 ? out.length : start + 8 + end + 3;\n  message = (out.slice(0, start) + out.slice(fenceEnd)).trim();\n}\nreturn [{ json: Object.assign({}, $json, { output: message, emailRequested, email_to: to, email_subject: subject, email_body: body }) }];"
+        "jsCode": "const out = ($json.output || '').toString();\nconst start = out.indexOf('```email');\nlet blockPresent = false, valid = false, to = '', subject = '', body = '', message = out;\nif (start !== -1) {\n  blockPresent = true;\n  const after = out.slice(start + 8);\n  const end = after.indexOf('```');\n  const block = end === -1 ? after : after.slice(0, end);\n  const bodyLines = [];\n  let inBody = false;\n  for (const raw of block.split('\\n')) {\n    const line = raw.trim();\n    const low = line.toLowerCase();\n    if (!inBody && low.startsWith('to:')) to = raw.slice(raw.indexOf(':') + 1).trim();\n    else if (!inBody && low.startsWith('subject:')) subject = raw.slice(raw.indexOf(':') + 1).trim();\n    else if (!inBody && low.startsWith('body:')) { inBody = true; bodyLines.push(raw.slice(raw.indexOf(':') + 1)); }\n    else if (inBody) bodyLines.push(raw);\n  }\n  body = bodyLines.join('\\n').trim();\n  const fenceEnd = end === -1 ? out.length : start + 8 + end + 3;\n  message = (out.slice(0, start) + out.slice(fenceEnd)).trim();\n  // STRICT: exactly one well-formed recipient (no comma/semicolon/whitespace fan-out)\n  const singleAddress = to.length > 0\n    && !/[,;\\s]/.test(to)\n    && (to.match(/@/g) || []).length === 1\n    && /^[^@]+@[^@]+\\.[^@]+$/.test(to);\n  valid = singleAddress && subject.length > 0 && body.length > 0;\n}\nreturn [{ json: Object.assign({}, $json, {\n  output: message,\n  email_block_present: blockPresent,\n  email_valid: valid,\n  email_to: to,\n  email_subject: subject,\n  email_body: body\n}) }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -715,7 +715,7 @@
           "conditions": [
             {
               "id": "a1000000-0000-4000-8000-000000000002",
-              "leftValue": "={{ $json.emailRequested }}",
+              "leftValue": "={{ $json.email_block_present }}",
               "rightValue": "",
               "operator": {
                 "type": "boolean",
@@ -740,8 +740,8 @@
     {
       "parameters": {
         "operation": "sendAndWait",
-        "chatId": "={{ $('Receive Message').item.json.message.chat.id }}",
-        "message": "=📧 ECHO wants to send an email. Approve?\n\nTo: {{ $('Parse Email Proposal').item.json.email_to }}\nSubject: {{ $('Parse Email Proposal').item.json.email_subject }}\n\n{{ $('Parse Email Proposal').item.json.email_body }}",
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
+        "message": "=📧 ECHO wants to send an email. Approve?\n\nTo: {{ $('Parse Email Proposal').item.json.email_to }}\nSubject: {{ $('Parse Email Proposal').item.json.email_subject }}\n\n----- message body -----\n{{ $('Parse Email Proposal').item.json.email_body }}\n------------------------",
         "responseType": "approval",
         "approvalOptions": {
           "values": {
@@ -750,12 +750,20 @@
             "buttonDisapprovalLabel": "✖️ Cancel"
           }
         },
-        "options": {}
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "limitType": "afterTimeInterval",
+              "resumeAmount": 10,
+              "resumeUnit": "minutes"
+            }
+          }
+        }
       },
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        1800,
+        2180,
         60
       ],
       "id": "a1000000-0000-4000-8000-000000000004",
@@ -796,7 +804,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2020,
+        2380,
         60
       ],
       "id": "a1000000-0000-4000-8000-000000000006",
@@ -830,7 +838,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Receive Message').item.json.message.chat.id }}",
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
         "text": "=✅ Email sent to {{ $('Parse Email Proposal').item.json.email_to }}.",
         "additionalFields": {
           "appendAttribution": false
@@ -853,7 +861,7 @@
     },
     {
       "parameters": {
-        "chatId": "={{ $('Receive Message').item.json.message.chat.id }}",
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
         "text": "=✖️ Cancelled — no email was sent to {{ $('Parse Email Proposal').item.json.email_to }}.",
         "additionalFields": {
           "appendAttribution": false
@@ -873,6 +881,181 @@
           "name": "Youtube Tutorial"
         }
       }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0000000-0000-4000-8000-000000000001",
+              "name": "owner_chat_id",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        120,
+        160
+      ],
+      "id": "c0000000-0000-4000-8000-000000000010",
+      "name": "Owner ID"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1000000-0000-4000-8000-000000000002",
+              "leftValue": "={{ $json.email_valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1780,
+        40
+      ],
+      "id": "d1000000-0000-4000-8000-000000000001",
+      "name": "Valid Proposal?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
+        "text": "=⚠️ I did not send that email: the proposal was missing a valid single recipient, subject, or body. Nothing was sent.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1780,
+        240
+      ],
+      "id": "d1000000-0000-4000-8000-000000000003",
+      "name": "Cancelled (invalid proposal)",
+      "credentials": {
+        "telegramApi": {
+          "id": "F5Fsxyw3McbPqJoe",
+          "name": "Youtube Tutorial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Edit this list to allow more sending domains.\nconst ALLOWED_DOMAINS = ['oneillcontractors.com'];\n\nconst to = ($json.email_to || '').toString().trim().toLowerCase();\n// Fail closed on empty, multi-address, or malformed recipients.\nif (!to || /[,;\\s]/.test(to) || (to.match(/@/g) || []).length !== 1) {\n  throw new Error('Recipient is not a single valid address: ' + to);\n}\nconst domain = to.slice(to.lastIndexOf('@') + 1).trim();\nif (!ALLOWED_DOMAINS.map(d => d.toLowerCase().trim()).includes(domain)) {\n  throw new Error('Domain not on allowlist: ' + domain);\n}\nreturn [{ json: Object.assign({}, $json, { recipient_domain: domain, recipient_allowed: true }) }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        40
+      ],
+      "id": "d1000000-0000-4000-8000-000000000004",
+      "name": "Recipient Allowed?",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
+        "text": "=🚫 Blocked an email — recipient domain is not on the allowlist.\nTo: {{ $('Parse Email Proposal').item.json.email_to }}\nSubject: {{ $('Parse Email Proposal').item.json.email_subject }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1980,
+        240
+      ],
+      "id": "d1000000-0000-4000-8000-000000000005",
+      "name": "Blocked: domain not on allowlist",
+      "credentials": {
+        "telegramApi": {
+          "id": "F5Fsxyw3McbPqJoe",
+          "name": "Youtube Tutorial"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d1000000-0000-4000-8000-000000000007",
+              "leftValue": "={{ $json.data && $json.data.approved === false }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2580,
+        180
+      ],
+      "id": "d1000000-0000-4000-8000-000000000006",
+      "name": "Explicit Cancel?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Owner ID').item.json.owner_chat_id }}",
+        "text": "=⏰ Approval timed out after 10 minutes — no email was sent to {{ $('Parse Email Proposal').item.json.email_to }}.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2780,
+        300
+      ],
+      "id": "d1000000-0000-4000-8000-000000000008",
+      "name": "Cancelled (timeout)",
+      "credentials": {
+        "telegramApi": {
+          "id": "F5Fsxyw3McbPqJoe",
+          "name": "Youtube Tutorial"
+        }
+      }
     }
   ],
   "pinData": {},
@@ -881,7 +1064,7 @@
       "main": [
         [
           {
-            "node": "Authorized?",
+            "node": "Owner ID",
             "type": "main",
             "index": 0
           }
@@ -1145,7 +1328,7 @@
       "main": [
         [
           {
-            "node": "Approve Send?",
+            "node": "Valid Proposal?",
             "type": "main",
             "index": 0
           }
@@ -1181,7 +1364,7 @@
         ],
         [
           {
-            "node": "Email Cancelled",
+            "node": "Explicit Cancel?",
             "type": "main",
             "index": 0
           }
@@ -1193,6 +1376,71 @@
         [
           {
             "node": "Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Owner ID": {
+      "main": [
+        [
+          {
+            "node": "Authorized?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Proposal?": {
+      "main": [
+        [
+          {
+            "node": "Recipient Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cancelled (invalid proposal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recipient Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Approve Send?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Blocked: domain not on allowlist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Explicit Cancel?": {
+      "main": [
+        [
+          {
+            "node": "Email Cancelled",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cancelled (timeout)",
             "type": "main",
             "index": 0
           }

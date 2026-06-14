@@ -85,10 +85,11 @@ placeholder allowlist is `0`, so **nobody** gets through until you set your own 
 
 1. In Telegram, message [@userinfobot](https://t.me/userinfobot) — it replies with your
    numeric **user ID** (e.g. `123456789`).
-2. In n8n, open the **`Authorized?`** node → in the condition, replace the right-hand
-   value `0` with your number.
-3. Need to allow more than one person? Add another condition with their ID (the node uses
-   **OR**), or use the Telegram trigger's built-in *Restrict to chat IDs* field as a second layer.
+2. In n8n, open the **`Owner ID`** node and put your numeric ID in the **`owner_chat_id`**
+   field. That one value drives both the **`Authorized?`** gate *and* which chat receives
+   approval cards / notices — set it once, everywhere updates.
+3. Need to allow more than one person to *talk* to ECHO? Add a condition to **`Authorized?`**
+   with their ID (the node uses **OR**). Note: approvals still go only to `owner_chat_id`.
 
 > The `false` branch of `Authorized?` is intentionally left unconnected, so unauthorized
 > messages are silently dropped — the bot doesn't even reply, which avoids confirming it exists.
@@ -121,9 +122,31 @@ Email is now a **hard, human-gated action**, not something the agent can do on i
 Because the gate lives in the main flow (not inside the agent), a prompt-injection can at most
 make ECHO *propose* an email — it can never send one without your tap.
 
-> Want an even tighter gate? Add a **Code/IF node before `Send Email`** that rejects any
-> recipient whose domain isn't on an allowlist (e.g. only `@oneillcontractors.com`). Ask and
-> I'll wire it in.
+### Recipient-domain allowlist + extra hardening (built in)
+On top of tap-to-approve, the email path is gated further:
+
+- **`Recipient Allowed?`** (Code node, **before** the approval card) holds an editable list at
+  the top: `const ALLOWED_DOMAINS = ['oneillcontractors.com'];`. Edit that array to permit more
+  domains. It lowercases the recipient, takes the domain after the last `@`, and **fails closed**
+  via its error output for anything that isn't an allowed single address. Blocked attempts go to
+  **`Blocked: domain not on allowlist`**, which DMs you the attempted recipient + subject and
+  ends the run — blocked mail can never reach the approval card or Gmail.
+- **No multi-recipient fan-out:** both `Parse Email Proposal` and `Recipient Allowed?` reject any
+  recipient containing a comma, semicolon, or whitespace, or more than one `@`. The Gmail node's
+  `sendTo` only ever receives one validated address.
+- **Strict, fail-closed parsing:** if an ` ```email ` block is present but missing a valid
+  recipient / subject / body, the run routes to **`Cancelled (invalid proposal)`** and sends
+  nothing (it does not silently fall through to a normal reply).
+- **Approval pinned to you:** the `Approve Send?` card and **all** chat-addressed Telegram nodes
+  send to **`Owner ID → owner_chat_id`** (one editable field, also used by `Authorized?`), so only
+  your chat ever receives the buttons.
+- **Approval card shows everything:** full recipient, subject, and the complete body text.
+- **10-minute timeout:** if you don't tap within 10 minutes, the run resumes and routes to
+  **`Cancelled (timeout)`** instead of hanging. (Explicit Cancel → `Email Cancelled`.)
+
+> **Set `owner_chat_id` once:** open the **`Owner ID`** node and put your numeric Telegram id in
+> `owner_chat_id`. That single value now drives both the `Authorized?` gate and the chat that
+> receives approvals.
 
 ## ▶️ Activate & test
 
