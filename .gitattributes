@@ -1,0 +1,5 @@
+# Keep shell scripts as LF so they run on macOS/Linux (CRLF breaks the shebang).
+*.sh   text eol=lf
+*.py   text eol=lf
+# Windows batch files need CRLF.
+*.bat  text eol=crlf
