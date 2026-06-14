@@ -106,12 +106,24 @@ placeholder allowlist is `0`, so **nobody** gets through until you set your own 
 > ⚠️ The email/calendar confirmation is a *soft* control (a prompt instruction), not a hard
 > gate. If you want a hard guarantee, see "Optional: stronger Send Email controls" below.
 
-### Optional: stronger Send Email controls
-For a real security boundary (not just a prompt), add **before** the Send Email node either:
-- a **Code/IF node** that rejects any `recipient_email` whose domain isn't on an allowlist, or
-- a **Telegram inline-button approval** step so you tap "Send" before any email goes out.
+### Send Email tap-to-approve (built in)
+Email is now a **hard, human-gated action**, not something the agent can do on its own:
 
-Ask if you'd like this wired in — it's a small follow-up.
+1. ECHO **does not** have Send Email as an autonomous tool. When you ask it to email
+   someone, it writes a normal reply and appends a hidden ` ```email ` block with the
+   `to` / `subject` / `body`.
+2. The **`Parse Email Proposal`** node extracts that block; **`Email Requested?`** routes it
+   to **`Approve Send?`**, a Telegram *Send and Wait for Response* card with
+   **✅ Approve & send** / **✖️ Cancel** buttons. The workflow **pauses** here.
+3. Only if you tap **Approve** does the **`Send Email`** (Gmail) node run, then ECHO confirms
+   *"Email sent to …"*. Tap **Cancel** and nothing is sent.
+
+Because the gate lives in the main flow (not inside the agent), a prompt-injection can at most
+make ECHO *propose* an email — it can never send one without your tap.
+
+> Want an even tighter gate? Add a **Code/IF node before `Send Email`** that rejects any
+> recipient whose domain isn't on an allowlist (e.g. only `@oneillcontractors.com`). Ask and
+> I'll wire it in.
 
 ## ▶️ Activate & test
 
@@ -154,6 +166,8 @@ node and why — almost always a credential that hasn't been connected yet.
   default and only responds to allowlisted Telegram IDs (see "Lock it down" above).
 - **Prompt-injection defenses:** untrusted-data system rules, delimiter-wrapped image content,
   sanitized display name, and confirm-before-send guidance for email/calendar.
+- **Tap-to-approve email:** Send Email was removed from the agent's autonomous tools and gated
+  behind a Telegram Approve/Cancel button in the main flow (see "Send Email tap-to-approve").
 
 ---
 
