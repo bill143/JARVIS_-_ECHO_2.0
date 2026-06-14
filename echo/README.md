@@ -72,6 +72,47 @@ calendar, open Get/Set Calendar and pick it from the list.
 
 ---
 
+## 🔐 Lock it down (REQUIRED — do this before activating)
+
+A Telegram bot replies to **anyone** who finds it. Because ECHO can send email from your
+Gmail, read your inbox, and write to your calendar, you must restrict it to **yourself**.
+
+This workflow ships **closed by default**: the **`Authorized?`** node (right after
+*Receive Message*) drops every message whose sender ID isn't on the allowlist, and the
+placeholder allowlist is `0`, so **nobody** gets through until you set your own ID.
+
+**To set your ID:**
+
+1. In Telegram, message [@userinfobot](https://t.me/userinfobot) — it replies with your
+   numeric **user ID** (e.g. `123456789`).
+2. In n8n, open the **`Authorized?`** node → in the condition, replace the right-hand
+   value `0` with your number.
+3. Need to allow more than one person? Add another condition with their ID (the node uses
+   **OR**), or use the Telegram trigger's built-in *Restrict to chat IDs* field as a second layer.
+
+> The `false` branch of `Authorized?` is intentionally left unconnected, so unauthorized
+> messages are silently dropped — the bot doesn't even reply, which avoids confirming it exists.
+
+### Other hardening already built in
+- **Untrusted-input handling:** the system prompt marks all message/voice/image/email/search
+  content as *untrusted data* and tells ECHO never to obey instructions hidden inside it
+  (defense against prompt-injection → tool abuse). Image content is wrapped in
+  `<image_caption>` / `<vision_analysis>` tags.
+- **Name sanitized:** your Telegram display name is stripped to safe characters and wrapped in
+  `<user_display_name>` before it reaches the model, so a malicious display name can't inject.
+- **Email/calendar confirmation:** ECHO is instructed to confirm the recipient and details
+  with you in chat before using Send Email or Set Calendar.
+
+> ⚠️ The email/calendar confirmation is a *soft* control (a prompt instruction), not a hard
+> gate. If you want a hard guarantee, see "Optional: stronger Send Email controls" below.
+
+### Optional: stronger Send Email controls
+For a real security boundary (not just a prompt), add **before** the Send Email node either:
+- a **Code/IF node** that rejects any `recipient_email` whose domain isn't on an allowlist, or
+- a **Telegram inline-button approval** step so you tap "Send" before any email goes out.
+
+Ask if you'd like this wired in — it's a small follow-up.
+
 ## ▶️ Activate & test
 
 1. Click **Active** (top-right toggle) to switch the workflow on. This registers the
@@ -107,6 +148,12 @@ node and why — almost always a credential that hasn't been connected yet.
   → `message.photo[message.photo.length - 1]` (always the largest available size).
 - **Name expression hardened:** the greeting now reads `first_name` from **Receive Message**
   instead of the Switch node, so it resolves reliably across all three input lanes.
+
+**Security hardening added on top:**
+- **Sender allowlist (`Authorized?` node):** the bot was open to anyone; it's now closed by
+  default and only responds to allowlisted Telegram IDs (see "Lock it down" above).
+- **Prompt-injection defenses:** untrusted-data system rules, delimiter-wrapped image content,
+  sanitized display name, and confirm-before-send guidance for email/calendar.
 
 ---
 
