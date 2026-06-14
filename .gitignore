@@ -1,0 +1,25 @@
+# Secrets - NEVER commit your real keys
+.env
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Downloaded model files (Silero VAD / turn detector)
+*.onnx
+*.pt
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Claude Code harness folder (not part of the project)
+.remember/
