@@ -1,0 +1,4 @@
+# JARVIS · Alloy voice + vision assistant (GetStream Vision Agents)
+# The extras pull in just the integrations this agent uses.
+vision-agents[getstream,anthropic,deepgram,elevenlabs]
+python-dotenv>=1.0
