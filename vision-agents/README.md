@@ -35,7 +35,10 @@ Keep these tabs open; the setup script will ask you to paste each one.
 | **Anthropic** | **Claude** — the brain | https://console.anthropic.com (key starts `sk-ant-`) |
 | **Deepgram** | Speech-to-text | https://console.deepgram.com |
 | **ElevenLabs** | The voice (text-to-speech) | https://elevenlabs.io |
-| **Moondream** | **Vision** — Claude's `look` tool (cloud, no GPU) | https://console.moondream.ai |
+| **Moondream** | **Vision** — Claude's look/read_text/find_object tools (cloud, no GPU) | https://console.moondream.ai |
+
+*Optional 6th key:* **Tavily** (https://tavily.com) enables the `search_web` tool. The setup
+script lets you press Enter to skip it; everything else works without it.
 
 You do **not** need to install Python yourself — `uv` handles it.
 
@@ -56,11 +59,29 @@ then just start talking. Press **Ctrl + C** in the terminal to stop.
 
 ---
 
+## 🧰 What Alloy can do
+
+Claude decides when to use each tool — you just talk naturally.
+
+| Ability | Tool | Powered by |
+|---------|------|------------|
+| See the camera | `look` | Moondream |
+| Read text you show it | `read_text` | Moondream |
+| Spot an object | `find_object` | Moondream |
+| Current weather | `get_weather` | built-in |
+| Date & time | `get_current_time` | built-in |
+| Remember / recall notes | `remember` / `recall` | local file |
+| Web search | `search_web` | Tavily *(optional key)* |
+
 ## 💬 Try saying
 
-- "Hey Alloy, tell me a joke."
 - "What do you see right now?" 👀
 - "Read what's on this label." (hold it up to the camera)
+- "Can you see my coffee mug?"
+- "What's the weather in Boston?"
+- "What time is it?"
+- "Remember that my Wi-Fi router is in the closet." … later: "Where's my router?"
+- "Search the web — who won the game last night?" *(needs the Tavily key)*
 
 ---
 

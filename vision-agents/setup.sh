@@ -79,6 +79,10 @@ else
   ELEVENLABS_API_KEY=$(ask "ElevenLabs API Key:")
   MOONDREAM_API_KEY=$(ask "Moondream API Key:")
 
+  # Optional — web search. Press Enter to skip.
+  printf "%s " "${BOLD}Tavily API Key (web search — press Enter to skip):${RESET}"
+  read -r TAVILY_API_KEY
+
   {
     echo "STREAM_API_KEY=$STREAM_API_KEY"
     echo "STREAM_API_SECRET=$STREAM_API_SECRET"
@@ -86,6 +90,7 @@ else
     echo "DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY"
     echo "ELEVENLABS_API_KEY=$ELEVENLABS_API_KEY"
     echo "MOONDREAM_API_KEY=$MOONDREAM_API_KEY"
+    echo "TAVILY_API_KEY=$TAVILY_API_KEY"
   } > .env
   ok "Saved your keys to .env (git-ignored — stays on your machine)."
 fi
