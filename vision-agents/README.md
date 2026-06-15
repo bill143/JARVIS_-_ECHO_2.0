@@ -8,29 +8,34 @@ your webcam, and **talks back**, powered by **Claude**. Built on
  you (webcam + mic) ──▶ Stream edge ──▶ Deepgram (speech→text)
                                           │
                                           ▼
-                                   Claude  (brain + vision)
-                                          │
+                                   Claude  (the brain)
+                                          │  └─ calls look() ─▶ Moondream (the eyes) ─▶ sees the webcam
                                           ▼
         back to you ◀── ElevenLabs (text→voice) ◀──┘
 ```
 
 > **Why this instead of the LiveKit version in the repo root?** It runs on **current libraries**
 > and **`uv` installs the right Python for you** (3.13) — so it doesn't matter that your machine
-> has Python 3.14. And **Claude is the brain *and* the eyes**: one model handles both the
-> conversation and "what am I looking at?".
+> has Python 3.14.
+>
+> **How vision works:** Claude is the brain. When you ask about something on camera, Claude calls
+> a **`look` tool** that runs **Moondream** (a cloud vision model — no GPU) on the latest webcam
+> frame and hands the description back to Claude to answer. Same idea as the original "Alloy":
+> grab the latest frame, use it only when vision is actually needed.
 
 ---
 
-## ✅ Before you start — get 4 free API keys
+## ✅ Before you start — get 5 free API keys
 
 Keep these tabs open; the setup script will ask you to paste each one.
 
 | Service | What it does | Where |
 |---------|--------------|-------|
 | **Stream** | Real-time video/audio (333k free min/mo) | https://getstream.io/try-for-free/ → API Key **and** Secret |
-| **Anthropic** | **Claude** — the brain + vision | https://console.anthropic.com (key starts `sk-ant-`) |
+| **Anthropic** | **Claude** — the brain | https://console.anthropic.com (key starts `sk-ant-`) |
 | **Deepgram** | Speech-to-text | https://console.deepgram.com |
 | **ElevenLabs** | The voice (text-to-speech) | https://elevenlabs.io |
+| **Moondream** | **Vision** — Claude's `look` tool (cloud, no GPU) | https://console.moondream.ai |
 
 You do **not** need to install Python yourself — `uv` handles it.
 
@@ -69,13 +74,19 @@ Open **`agent.py`**:
   (`cartesia.TTS()`, `deepgram.TTS()`, …).
 - **Speech-to-text** → the `stt=` line (Deepgram here; AssemblyAI, Whisper, etc. are also supported).
 
-### Sharpening the vision 👁️
-Voice is solid out of the box. For **robust, continuous** scene understanding, Vision Agents is
-designed to pair a fast **vision processor** with the LLM. Add one to the `processors=[]` list in
-`agent.py` — e.g. Moondream for image description, or YOLO for object/pose detection — and it feeds
-visual context to Claude every frame. See the
-[golf-coach example](https://github.com/GetStream/Vision-Agents/tree/main/examples/02_golf_coach_example)
-and the [video-processors guide](https://visionagents.ai/guides/video-processors).
+### How the eyes are wired 👁️
+Vision is **built in** via Claude's `look` tool, not left as an exercise:
+
+- `WebcamEyes` (a small `VideoProcessor` in `agent.py`) keeps the **latest webcam frame**.
+- The **`look(question)`** function is registered on Claude. When Claude calls it, it runs
+  **Moondream** (cloud VQA) on that frame and returns a description.
+- The system prompt tells Claude to call `look` whenever the question is visual.
+
+Tune it by editing `agent.py`:
+- `VISION_FPS` — how often the latest frame refreshes (1/sec is plenty for Q&A).
+- Want richer/continuous scene tracking instead? Swap the Moondream call for a local model, or add
+  a [YOLO/pose processor](https://github.com/GetStream/Vision-Agents/tree/main/examples/02_golf_coach_example)
+  (see the [video-processors guide](https://visionagents.ai/guides/video-processors)).
 
 ---
 

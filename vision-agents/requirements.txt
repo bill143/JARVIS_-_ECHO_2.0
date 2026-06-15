@@ -1,4 +1,5 @@
 # JARVIS · Alloy voice + vision assistant (GetStream Vision Agents)
 # The extras pull in just the integrations this agent uses.
-vision-agents[getstream,anthropic,deepgram,elevenlabs]
+# moondream = the cloud vision model behind Claude's `look` tool (no GPU needed).
+vision-agents[getstream,anthropic,deepgram,elevenlabs,moondream]
 python-dotenv>=1.0

@@ -56,7 +56,7 @@ if exist ".env" (
 
 echo.
 echo ==^> Paste each API key when asked, then press Enter.
-echo     (Stream: getstream.io  Anthropic: console.anthropic.com  Deepgram: console.deepgram.com  ElevenLabs: elevenlabs.io)
+echo     (Stream: getstream.io  Anthropic: console.anthropic.com  Deepgram: console.deepgram.com  ElevenLabs: elevenlabs.io  Moondream: console.moondream.ai)
 echo.
 
 :ask_stream_key
@@ -84,12 +84,18 @@ set "ELEVENLABS_API_KEY="
 set /p "ELEVENLABS_API_KEY=ElevenLabs API Key: "
 if not defined ELEVENLABS_API_KEY ( echo  !! That can't be empty. & goto ask_elevenlabs )
 
+:ask_moondream
+set "MOONDREAM_API_KEY="
+set /p "MOONDREAM_API_KEY=Moondream API Key: "
+if not defined MOONDREAM_API_KEY ( echo  !! That can't be empty. & goto ask_moondream )
+
 (
     echo STREAM_API_KEY=!STREAM_API_KEY!
     echo STREAM_API_SECRET=!STREAM_API_SECRET!
     echo ANTHROPIC_API_KEY=!ANTHROPIC_API_KEY!
     echo DEEPGRAM_API_KEY=!DEEPGRAM_API_KEY!
     echo ELEVENLABS_API_KEY=!ELEVENLABS_API_KEY!
+    echo MOONDREAM_API_KEY=!MOONDREAM_API_KEY!
 ) > .env
 echo  OK  Saved your keys to .env (git-ignored - stays on your machine).
 

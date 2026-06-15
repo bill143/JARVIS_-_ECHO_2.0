@@ -57,7 +57,7 @@ if [ -f ".env" ]; then
 else
   echo ""
   say "Paste each API key when asked, then press Enter."
-  echo "    (Stream: getstream.io · Anthropic: console.anthropic.com · Deepgram: console.deepgram.com · ElevenLabs: elevenlabs.io)"
+  echo "    (Stream: getstream.io · Anthropic: console.anthropic.com · Deepgram: console.deepgram.com · ElevenLabs: elevenlabs.io · Moondream: console.moondream.ai)"
   echo ""
 
   ask() {  # usage: VALUE=$(ask "Prompt")  — prompt goes to stderr so it isn't captured
@@ -77,6 +77,7 @@ else
   ANTHROPIC_API_KEY=$(ask "Anthropic API Key:")
   DEEPGRAM_API_KEY=$(ask "Deepgram API Key:")
   ELEVENLABS_API_KEY=$(ask "ElevenLabs API Key:")
+  MOONDREAM_API_KEY=$(ask "Moondream API Key:")
 
   {
     echo "STREAM_API_KEY=$STREAM_API_KEY"
@@ -84,6 +85,7 @@ else
     echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
     echo "DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY"
     echo "ELEVENLABS_API_KEY=$ELEVENLABS_API_KEY"
+    echo "MOONDREAM_API_KEY=$MOONDREAM_API_KEY"
   } > .env
   ok "Saved your keys to .env (git-ignored — stays on your machine)."
 fi
