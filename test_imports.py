@@ -39,7 +39,7 @@ def resolve_symbols() -> dict[str, object]:
         LocalAudioTransport,
         LocalAudioTransportParams,
     )
-    from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
+    from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
     from vision import (
         make_desktop_vision_handler,
