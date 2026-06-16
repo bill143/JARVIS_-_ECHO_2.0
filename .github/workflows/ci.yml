@@ -4,9 +4,10 @@ on:
   push:
   pull_request:
 
-# Avoid running twice (push + pull_request) on the same ref.
+# Avoid running twice (push + pull_request) on the same commit. Key on the head
+# SHA, which is identical across both events (their github.ref differs).
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
