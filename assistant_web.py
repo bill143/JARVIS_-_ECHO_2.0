@@ -1,19 +1,18 @@
-"""JARVIS & ECHO 2.0 — desktop build (local microphone + speaker).
+"""JARVIS & ECHO 2.0 — browser build (WebRTC mic + webcam).
 
-Fully-local voice stack with Claude as the brain:
+Closest to the old LiveKit UX: you talk and show things to JARVIS in the
+browser. Same brain (Claude), same local voice stack (Whisper + Kokoro + Silero)
+as the desktop build — only the transport and the greeting trigger differ.
 
-    mic --> Whisper (STT) --> wake-word gate --> Claude --> Kokoro (TTS) --> speaker
+Pipecat's development runner serves a ready-made web client and handles all the
+WebRTC signalling, so there's nothing else to wire up.
 
-Only the Claude API call leaves your machine. STT (Whisper), TTS (Kokoro),
-VAD (Silero) and the webcam all run locally. Say "what can you see?" to trigger
-the webcam (see ``vision.py``).
-
-Run:  ``python assistant.py``
+Run:  ``python assistant_web.py``   then open the printed URL (default
+http://localhost:7860).
 """
 
 from __future__ import annotations
 
-import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -28,18 +27,16 @@ from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
 )
+from pipecat.runner.types import RunnerArguments
 from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
-from pipecat.transports.local.audio import (
-    LocalAudioTransport,
-    LocalAudioTransportParams,
-)
+from pipecat.transports.base_transport import BaseTransport, TransportParams
+from pipecat.transports.network.small_webrtc import SmallWebRTCTransport
 
 from vision import (
     VISION_FUNCTION_NAME,
-    camera_index_from_env,
-    make_desktop_vision_handler,
+    make_web_vision_handler,
     vision_tool_schema,
 )
 from wakeword import WakeWordProcessor, gate_from_env
@@ -62,15 +59,7 @@ def system_prompt() -> str:
     )
 
 
-async def run() -> None:
-    transport = LocalAudioTransport(
-        LocalAudioTransportParams(
-            audio_in_enabled=True,
-            audio_out_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(),
-        )
-    )
-
+async def run_bot(transport: BaseTransport) -> None:
     stt = WhisperSTTService(model=WHISPER_MODEL)
     tts = KokoroTTSService(voice_id=KOKORO_VOICE)
     llm = AnthropicLLMService(
@@ -78,8 +67,8 @@ async def run() -> None:
         model=ANTHROPIC_MODEL,
     )
 
-    # Register the vision tool (local webcam via OpenCV).
-    llm.register_function(VISION_FUNCTION_NAME, make_desktop_vision_handler(camera_index_from_env()))
+    # Register the vision tool (frame pulled from the browser's video track).
+    llm.register_function(VISION_FUNCTION_NAME, make_web_vision_handler())
     tools = ToolsSchema(standard_tools=[vision_tool_schema()])
 
     context = LLMContext(
@@ -94,7 +83,7 @@ async def run() -> None:
         [
             transport.input(),
             stt,
-            wake_gate,               # drop everything until "hey jarvis"
+            wake_gate,
             aggregators.user(),
             llm,
             tts,
@@ -108,20 +97,38 @@ async def run() -> None:
         params=PipelineParams(allow_interruptions=True, enable_metrics=False),
     )
 
-    # Greet on startup.
-    await task.queue_frames([TTSSpeakFrame(GREETING)])
+    @transport.event_handler("on_client_connected")
+    async def _on_client_connected(transport, client):  # noqa: ANN001
+        # Greet as soon as the browser connects.
+        await task.queue_frames([TTSSpeakFrame(GREETING)])
 
-    runner = PipelineRunner(handle_sigint=True)
+    @transport.event_handler("on_client_disconnected")
+    async def _on_client_disconnected(transport, client):  # noqa: ANN001
+        await task.cancel()
+
+    runner = PipelineRunner(handle_sigint=False)
     await runner.run(task)
 
 
-def main() -> None:
+async def bot(runner_args: RunnerArguments) -> None:
+    """Entry point the Pipecat dev runner calls when a browser connects."""
+    transport = SmallWebRTCTransport(
+        params=TransportParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True,
+            video_in_enabled=True,           # the webcam video track
+            vad_analyzer=SileroVADAnalyzer(),
+        ),
+        webrtc_connection=runner_args.webrtc_connection,
+    )
+    await run_bot(transport)
+
+
+if __name__ == "__main__":
     if not os.getenv("ANTHROPIC_API_KEY"):
         raise SystemExit(
             "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and paste your key."
         )
-    asyncio.run(run())
+    from pipecat.runner.run import main
 
-
-if __name__ == "__main__":
     main()

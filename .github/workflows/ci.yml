@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  quick:
+    # Fast checks with no heavy deps: byte-compile everything + the wake-word
+    # logic tests. Runs in seconds.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Byte-compile all modules
+        run: python -m py_compile assistant.py assistant_web.py vision.py wakeword.py test_wakeword.py test_imports.py
+      - name: Wake-word gate tests
+        run: python test_wakeword.py
+
+  imports:
+    # Full import graph: install system libs + all extras, then resolve every
+    # symbol the app uses (no API key / mic / camera needed).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libsndfile1 ffmpeg
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Import-graph smoke test
+        run: python test_imports.py
