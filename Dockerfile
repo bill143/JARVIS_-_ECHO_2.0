@@ -9,11 +9,13 @@ FROM python:3.11-slim
 #  - libgl1 / libglib2.0-0  -> OpenCV (desktop vision import)
 #  - libsndfile1            -> audio I/O for the TTS/STT stack
 #  - ffmpeg                 -> Whisper audio decoding
+#  - portaudio19-dev        -> builds pyaudio (Pipecat [local] extra)
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
         libsndfile1 \
         ffmpeg \
+        portaudio19-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
