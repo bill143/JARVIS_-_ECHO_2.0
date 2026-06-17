@@ -60,7 +60,7 @@ GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 # OpenAI-compatible API, so we point an OpenAILLMService at it.
 ECHO_BASE_URL = os.getenv("ECHO_BASE_URL")  # e.g. http://localhost:4000/v1
 ECHO_API_KEY = os.getenv("ECHO_API_KEY") or os.getenv("ECHO_MASTER_KEY")
-ECHO_MODEL = os.getenv("ECHO_MODEL", "tier-realtime")
+ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
 
 
 def build_llm():
