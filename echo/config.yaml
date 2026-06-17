@@ -58,6 +58,13 @@ model_list:
     litellm_params:
       model: gemini/gemini-1.5-flash
       api_key: os.environ/GEMINI_API_KEY
+  # Mirrors the funded alias on the live ECHO (C:\dev\echo); JARVIS's default
+  # ECHO_MODEL points here. NEEDS-CONFIRMATION: verify the exact Google model id
+  # this should resolve to in the live stack.
+  - model_name: gemini-3.1-pro-preview
+    litellm_params:
+      model: gemini/gemini-3.1-pro-preview
+      api_key: os.environ/GEMINI_API_KEY
   # DeepSeek
   - model_name: deepseek-chat
     litellm_params:
@@ -132,6 +139,7 @@ router_settings:
     - google-gemini-25-pro: [anthropic-sonnet, openai-gpt4o]
     - google-gemini-flash: [openai-gpt4o-mini, anthropic-haiku]
     - google-gemini-flash-lite: [google-gemini-flash, openai-gpt4o-mini]
+    - gemini-3.1-pro-preview: [google-gemini-25-pro, google-gemini-pro]
     - deepseek-chat: [openai-gpt4o-mini, anthropic-haiku]
     - deepseek-reasoner: [openai-o3-mini, openai-o1]
     - xai-grok: [openai-gpt4o, anthropic-sonnet]
