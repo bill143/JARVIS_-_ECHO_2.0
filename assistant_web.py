@@ -29,6 +29,7 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from pipecat.runner.types import RunnerArguments
 from pipecat.services.anthropic.llm import AnthropicLLMService
+from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
@@ -49,6 +50,25 @@ WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
 KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
 GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 
+# Route through ECHO (OpenAI-compatible) when configured, else Anthropic direct.
+ECHO_BASE_URL = os.getenv("ECHO_BASE_URL")  # e.g. http://localhost:4000/v1
+ECHO_API_KEY = os.getenv("ECHO_API_KEY") or os.getenv("ECHO_MASTER_KEY")
+ECHO_MODEL = os.getenv("ECHO_MODEL", "tier-realtime")
+
+
+def build_llm():
+    """Return the LLM service: ECHO proxy if configured, else Anthropic direct."""
+    if ECHO_BASE_URL:
+        return OpenAILLMService(
+            base_url=ECHO_BASE_URL,
+            api_key=ECHO_API_KEY or "not-set",
+            model=ECHO_MODEL,
+        )
+    return AnthropicLLMService(
+        api_key=os.environ["ANTHROPIC_API_KEY"],
+        model=ANTHROPIC_MODEL,
+    )
+
 
 def system_prompt() -> str:
     return (
@@ -62,10 +82,7 @@ def system_prompt() -> str:
 async def run_bot(transport: BaseTransport) -> None:
     stt = WhisperSTTService(model=WHISPER_MODEL)
     tts = KokoroTTSService(voice_id=KOKORO_VOICE)
-    llm = AnthropicLLMService(
-        api_key=os.environ["ANTHROPIC_API_KEY"],
-        model=ANTHROPIC_MODEL,
-    )
+    llm = build_llm()
 
     # Register the vision tool (frame pulled from the browser's video track).
     llm.register_function(VISION_FUNCTION_NAME, make_web_vision_handler())
@@ -125,9 +142,10 @@ async def bot(runner_args: RunnerArguments) -> None:
 
 
 if __name__ == "__main__":
-    if not os.getenv("ANTHROPIC_API_KEY"):
+    if not ECHO_BASE_URL and not os.getenv("ANTHROPIC_API_KEY"):
         raise SystemExit(
-            "ANTHROPIC_API_KEY is not set. Copy .env.example to .env and paste your key."
+            "Set ECHO_BASE_URL to route through ECHO, or ANTHROPIC_API_KEY to call "
+            "Anthropic directly. Copy .env.example to .env to configure."
         )
     from pipecat.runner.run import main
 

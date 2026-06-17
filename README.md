@@ -4,8 +4,21 @@ A real-time **Voice + Vision AI assistant** you can talk to. It listens, thinks,
 talks back, and can *see* through your webcam when you ask it to.
 
 This version runs **off LiveKit Agents onto [Pipecat](https://pipecat.ai)**, with
-**Claude** as the brain and an **open-source / self-hosted** voice stack. Only the
-**LLM call** leaves your machine — STT, TTS, VAD, and the webcam all run locally.
+an **open-source / self-hosted** voice stack. STT, TTS, VAD, and the webcam all
+run locally; the thinking is routed through **ECHO**.
+
+## Two components, one system
+
+This is a monorepo with two parts:
+
+- **JARVIS** (this top level) — the voice front-end: mic → STT → LLM → TTS → speaker.
+- **[ECHO](./echo)** — a multi-provider LLM proxy (the brain/router): one
+  OpenAI-compatible endpoint with 6 tiers, 16 model aliases, fallback chains,
+  Langfuse observability, and cost/token/latency logging. Built on LiteLLM.
+
+JARVIS routes its thinking **through ECHO** when `ECHO_BASE_URL` is set (recommended),
+and falls back to calling Anthropic directly when it isn't. See [`echo/README.md`](./echo/README.md)
+to run the proxy.
 
 ---
 

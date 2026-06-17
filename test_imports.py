@@ -31,6 +31,7 @@ def resolve_symbols() -> dict[str, object]:
     from pipecat.processors.frame_processor import FrameDirection
     from pipecat.runner.types import RunnerArguments
     from pipecat.services.anthropic.llm import AnthropicLLMService
+    from pipecat.services.openai.llm import OpenAILLMService
     from pipecat.services.kokoro.tts import KokoroTTSService
     from pipecat.services.llm_service import FunctionCallParams
     from pipecat.services.whisper.stt import WhisperSTTService
@@ -56,6 +57,7 @@ def resolve_symbols() -> dict[str, object]:
         "LLMContext": LLMContext,
         "LLMContextAggregatorPair": LLMContextAggregatorPair,
         "AnthropicLLMService": AnthropicLLMService,
+        "OpenAILLMService": OpenAILLMService,
         "WhisperSTTService": WhisperSTTService,
         "KokoroTTSService": KokoroTTSService,
         "SileroVADAnalyzer": SileroVADAnalyzer,
