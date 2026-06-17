@@ -3,7 +3,7 @@
 # Pinned to Pipecat 1.3.x — the 1.x API differs a lot from 0.x. If you bump this,
 # re-check the service imports (AnthropicLLMService / WhisperSTTService /
 # KokoroTTSService) and the LLMContext / LLMContextAggregatorPair API.
-pipecat-ai[anthropic,openai,whisper,kokoro,silero,webrtc,local]~=1.3
+pipecat-ai[anthropic,openai,whisper,kokoro,silero,webrtc,local,mcp]~=1.3
 
 # Pipecat 1.3's extras under-declare these transitive deps; without them even
 # pipecat.pipeline.task fails to import. Pin them explicitly.

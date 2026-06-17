@@ -21,11 +21,13 @@ jobs:
         with:
           python-version: "3.11"
       - name: Byte-compile all modules
-        run: python -m py_compile assistant.py assistant_web.py vision.py wakeword.py memory_tools.py memory/*.py test_wakeword.py test_memory.py test_imports.py echo/validate_config.py echo/healthcheck.py
+        run: python -m py_compile assistant.py assistant_web.py vision.py wakeword.py memory_tools.py memory/*.py mcp_config.py mcp_tools.py test_wakeword.py test_memory.py test_mcp_config.py test_imports.py echo/validate_config.py echo/healthcheck.py
       - name: Wake-word gate tests
         run: python test_wakeword.py
       - name: Memory tests (offline)
         run: python test_memory.py
+      - name: MCP config tests (offline)
+        run: python test_mcp_config.py
       - name: ECHO config validation
         run: |
           python -m pip install --upgrade pip

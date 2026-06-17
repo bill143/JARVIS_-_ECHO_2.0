@@ -11,7 +11,10 @@ run locally; the thinking is routed through **ECHO**.
 
 This is a monorepo with two parts:
 
-- **JARVIS** (this top level) — the voice front-end: mic → STT → LLM → TTS → speaker.
+- **JARVIS** (this top level) — the voice front-end: mic → STT → LLM → TTS →
+  speaker, with a webcam **vision** tool, cross-session **memory**
+  (`remember`/`recall`), and **MCP** agent tools from any configured Model
+  Context Protocol servers.
 - **[ECHO](./echo)** — a multi-provider LLM proxy (the brain/router): one
   OpenAI-compatible endpoint with 6 tiers, 16 model aliases, fallback chains,
   Langfuse observability, and cost/token/latency logging. Built on LiteLLM.
@@ -48,9 +51,12 @@ mic --> Whisper (STT) --> "Hey JARVIS" gate --> Claude --> Kokoro (TTS) --> spea
 - `assistant_web.py` — **browser build: WebRTC mic + webcam** (closest to the old LiveKit setup)
 - `vision.py` — user-triggered webcam capture (OpenCV for desktop, WebRTC video track for browser)
 - `wakeword.py` — **"Hey JARVIS" wake-phrase gate** (fully local, no extra models)
+- `memory/` + `memory_tools.py` — cross-session memory (`remember`/`recall`); Obsidian vault or Supabase pgvector
+- `mcp_config.py` + `mcp_tools.py` — **MCP agent tools** from configured Model Context Protocol servers
+- `echo/` — the **ECHO** multi-provider LLM proxy (see `echo/README.md`)
 - `Dockerfile` / `docker-compose.yml` — self-contained container (web build)
 - `requirements.txt` — Pipecat 1.3 + the local voice stack
-- `.env.example` — copy to `.env` and add your `ANTHROPIC_API_KEY`
+- `.env.example` — copy to `.env` and add your `ANTHROPIC_API_KEY` (or point at ECHO)
 
 Both builds speak a greeting first — `assistant.py` on startup, `assistant_web.py`
 when the browser connects.

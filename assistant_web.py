@@ -42,6 +42,7 @@ from vision import (
 )
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
+from mcp_tools import register_mcp_tools
 
 load_dotenv()
 
@@ -87,8 +88,11 @@ async def run_bot(transport: BaseTransport) -> None:
 
     # Register the vision tool (frame pulled from the browser's video track).
     llm.register_function(VISION_FUNCTION_NAME, make_web_vision_handler())
-    # Plus cross-session memory (remember/recall), if enabled.
-    tools = ToolsSchema(standard_tools=[vision_tool_schema(), *register_memory_tools(llm)])
+    # Plus cross-session memory (remember/recall) and any configured MCP servers.
+    mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
+    tools = ToolsSchema(
+        standard_tools=[vision_tool_schema(), *register_memory_tools(llm), *mcp_schemas]
+    )
 
     context = LLMContext(
         messages=[{"role": "system", "content": system_prompt()}],

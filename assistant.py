@@ -45,6 +45,7 @@ from vision import (
 )
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
+from mcp_tools import register_mcp_tools
 
 load_dotenv()
 
@@ -100,8 +101,11 @@ async def run() -> None:
 
     # Register the vision tool (local webcam via OpenCV).
     llm.register_function(VISION_FUNCTION_NAME, make_desktop_vision_handler(camera_index_from_env()))
-    # Plus cross-session memory (remember/recall), if enabled.
-    tools = ToolsSchema(standard_tools=[vision_tool_schema(), *register_memory_tools(llm)])
+    # Plus cross-session memory (remember/recall) and any configured MCP servers.
+    mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
+    tools = ToolsSchema(
+        standard_tools=[vision_tool_schema(), *register_memory_tools(llm), *mcp_schemas]
+    )
 
     context = LLMContext(
         messages=[{"role": "system", "content": system_prompt()}],

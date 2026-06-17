@@ -34,6 +34,7 @@ def resolve_symbols() -> dict[str, object]:
     from pipecat.services.openai.llm import OpenAILLMService
     from pipecat.services.kokoro.tts import KokoroTTSService
     from pipecat.services.llm_service import FunctionCallParams
+    from pipecat.services.mcp_service import MCPClient
     from pipecat.services.whisper.stt import WhisperSTTService
     from pipecat.transports.base_transport import TransportParams
     from pipecat.transports.local.audio import (
@@ -53,6 +54,7 @@ def resolve_symbols() -> dict[str, object]:
         register_memory_tools,
         remember_tool_schema,
     )
+    from mcp_tools import build_server_params, register_mcp_tools
 
     return {
         "Pipeline": Pipeline,
@@ -86,6 +88,9 @@ def resolve_symbols() -> dict[str, object]:
         "remember_tool_schema": remember_tool_schema,
         "recall_tool_schema": recall_tool_schema,
         "register_memory_tools": register_memory_tools,
+        "MCPClient": MCPClient,
+        "register_mcp_tools": register_mcp_tools,
+        "build_server_params": build_server_params,
     }
 
 
@@ -132,14 +137,28 @@ def main() -> None:
         assert len(mem_schemas) == 2, "expected remember+recall schemas"
         assert set(stub.registered) == {"remember", "recall"}
 
-    tools = ToolsSchema(standard_tools=[vision_tool_schema(), *mem_schemas])
+    # MCP: build real ServerParameters from configs, and confirm register is a
+    # safe no-op when disabled (default).
+    import asyncio
+
+    from mcp_tools import build_server_params, register_mcp_tools
+
+    stdio_params = build_server_params({"command": "npx", "args": ["-y", "srv"]})
+    http_params = build_server_params({"url": "https://example.com/mcp"})
+    assert stdio_params.command == "npx"
+    assert http_params.url.endswith("/mcp")
+    os.environ.pop("MCP_ENABLED", None)
+    mcp_schemas, mcp_clients = asyncio.run(register_mcp_tools(stub))
+    assert mcp_schemas == [] and mcp_clients == [], "MCP must be a no-op when disabled"
+
+    tools = ToolsSchema(standard_tools=[vision_tool_schema(), *mem_schemas, *mcp_schemas])
     context = LLMContext(messages=[{"role": "system", "content": "test"}], tools=tools)
     aggregators = LLMContextAggregatorPair(context)
     assert aggregators.user() is not None
     assert aggregators.assistant() is not None
     assert callable(make_desktop_vision_handler(0))
     assert callable(make_web_vision_handler())
-    print("\nContext, aggregators, tool schema, vision handlers, and memory tools construct cleanly.")
+    print("\nContext, aggregators, tools, vision, memory, and MCP wiring construct cleanly.")
 
     print(f"\n{resolved}/{total} symbols resolve")
     if resolved != total:
