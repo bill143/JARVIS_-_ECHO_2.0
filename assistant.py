@@ -44,6 +44,7 @@ from vision import (
     vision_tool_schema,
 )
 from wakeword import WakeWordProcessor, gate_from_env
+from memory_tools import register_memory_tools
 
 load_dotenv()
 
@@ -99,7 +100,8 @@ async def run() -> None:
 
     # Register the vision tool (local webcam via OpenCV).
     llm.register_function(VISION_FUNCTION_NAME, make_desktop_vision_handler(camera_index_from_env()))
-    tools = ToolsSchema(standard_tools=[vision_tool_schema()])
+    # Plus cross-session memory (remember/recall), if enabled.
+    tools = ToolsSchema(standard_tools=[vision_tool_schema(), *register_memory_tools(llm)])
 
     context = LLMContext(
         messages=[{"role": "system", "content": system_prompt()}],

@@ -48,6 +48,11 @@ def resolve_symbols() -> dict[str, object]:
         vision_tool_schema,
     )
     from wakeword import WakeWordGate, WakeWordProcessor
+    from memory_tools import (
+        recall_tool_schema,
+        register_memory_tools,
+        remember_tool_schema,
+    )
 
     return {
         "Pipeline": Pipeline,
@@ -78,6 +83,9 @@ def resolve_symbols() -> dict[str, object]:
         "vision_tool_schema": vision_tool_schema,
         "make_desktop_vision_handler": make_desktop_vision_handler,
         "make_web_vision_handler": make_web_vision_handler,
+        "remember_tool_schema": remember_tool_schema,
+        "recall_tool_schema": recall_tool_schema,
+        "register_memory_tools": register_memory_tools,
     }
 
 
@@ -101,14 +109,37 @@ def main() -> None:
         vision_tool_schema,
     )
 
-    tools = ToolsSchema(standard_tools=[vision_tool_schema()])
+    # Exercise the memory tools against a throwaway local vault + stub LLM.
+    import os
+    import tempfile
+
+    from memory_tools import register_memory_tools
+
+    with tempfile.TemporaryDirectory() as vault:
+        os.environ.update(
+            MEMORY_ENABLED="true", MEMORY_BACKEND="obsidian", OBSIDIAN_VAULT_PATH=vault
+        )
+
+        class _StubLLM:
+            def __init__(self):
+                self.registered = []
+
+            def register_function(self, name, handler):
+                self.registered.append(name)
+
+        stub = _StubLLM()
+        mem_schemas = register_memory_tools(stub)
+        assert len(mem_schemas) == 2, "expected remember+recall schemas"
+        assert set(stub.registered) == {"remember", "recall"}
+
+    tools = ToolsSchema(standard_tools=[vision_tool_schema(), *mem_schemas])
     context = LLMContext(messages=[{"role": "system", "content": "test"}], tools=tools)
     aggregators = LLMContextAggregatorPair(context)
     assert aggregators.user() is not None
     assert aggregators.assistant() is not None
     assert callable(make_desktop_vision_handler(0))
     assert callable(make_web_vision_handler())
-    print("\nContext, aggregator pair, tool schema, and both vision handlers construct cleanly.")
+    print("\nContext, aggregators, tool schema, vision handlers, and memory tools construct cleanly.")
 
     print(f"\n{resolved}/{total} symbols resolve")
     if resolved != total:

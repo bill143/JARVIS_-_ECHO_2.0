@@ -25,5 +25,8 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Local Obsidian memory vault (JARVIS cross-session memory)
+memory_vault/
+
 # Claude Code harness folder (not part of the project)
 .remember/

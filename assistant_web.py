@@ -41,6 +41,7 @@ from vision import (
     vision_tool_schema,
 )
 from wakeword import WakeWordProcessor, gate_from_env
+from memory_tools import register_memory_tools
 
 load_dotenv()
 
@@ -86,7 +87,8 @@ async def run_bot(transport: BaseTransport) -> None:
 
     # Register the vision tool (frame pulled from the browser's video track).
     llm.register_function(VISION_FUNCTION_NAME, make_web_vision_handler())
-    tools = ToolsSchema(standard_tools=[vision_tool_schema()])
+    # Plus cross-session memory (remember/recall), if enabled.
+    tools = ToolsSchema(standard_tools=[vision_tool_schema(), *register_memory_tools(llm)])
 
     context = LLMContext(
         messages=[{"role": "system", "content": system_prompt()}],
