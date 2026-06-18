@@ -1,9 +1,8 @@
 """Memory tools for JARVIS — ``remember`` and ``recall``.
 
 Two function tools backed by a :class:`memory.MemoryStore` (Obsidian vault or
-Supabase pgvector, chosen by env). They mirror the vision-tool wiring in
-``vision.py``: a shared ``FunctionSchema`` plus a handler that takes
-``FunctionCallParams`` and replies via ``result_callback``.
+Supabase pgvector, chosen by env): a shared ``FunctionSchema`` plus a handler
+that takes ``FunctionCallParams`` and replies via ``result_callback``.
 
 Store calls are sync (filesystem / network), so they run in a worker thread to
 avoid blocking the audio event loop.

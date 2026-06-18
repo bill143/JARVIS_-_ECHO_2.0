@@ -3,7 +3,7 @@
 Connects JARVIS to one or more Model Context Protocol servers (configured via
 ``mcp_config``) and exposes their tools to the LLM — turning JARVIS into an agent
 that can use filesystem, web, database, or any other MCP server's capabilities
-alongside its built-in vision and memory tools.
+alongside its built-in memory tools.
 
 Built on Pipecat's official ``MCPClient`` (``pipecat-ai[mcp]``). The connection
 and tool discovery are async, so :func:`register_mcp_tools` is awaited from the

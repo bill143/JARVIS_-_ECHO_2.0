@@ -1,8 +1,9 @@
-"""JARVIS & ECHO 2.0 — browser build (WebRTC mic + webcam).
+"""JARVIS & ECHO 2.0 — browser build (WebRTC microphone).
 
-Closest to the old LiveKit UX: you talk and show things to JARVIS in the
-browser. Same brain (Claude), same local voice stack (Whisper + Kokoro + Silero)
-as the desktop build — only the transport and the greeting trigger differ.
+Closest to the old LiveKit UX: you talk to JARVIS in the browser. Same brain and
+same local voice stack (Whisper + Kokoro + Silero) as the desktop build — only
+the transport and the greeting trigger differ. Voice-only this phase (vision is
+quarantined in ``/deferred``).
 
 Pipecat's development runner serves a ready-made web client and handles all the
 WebRTC signalling, so there's nothing else to wire up.
@@ -35,11 +36,6 @@ from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
-from vision import (
-    VISION_FUNCTION_NAME,
-    make_web_vision_handler,
-    vision_tool_schema,
-)
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
 from mcp_tools import register_mcp_tools
@@ -75,9 +71,8 @@ def build_llm():
 def system_prompt() -> str:
     return (
         f"Your name is {ASSISTANT_NAME}. You are a witty, helpful voice assistant. "
-        "Your interface with the user is voice and vision. Keep answers short and "
-        "conversational. Avoid unpronounceable punctuation, markdown, and emojis. "
-        f"When the user asks about what is visible, call the '{VISION_FUNCTION_NAME}' tool."
+        "Your interface with the user is voice. Keep answers short and "
+        "conversational. Avoid unpronounceable punctuation, markdown, and emojis."
     )
 
 
@@ -86,13 +81,9 @@ async def run_bot(transport: BaseTransport) -> None:
     tts = KokoroTTSService(voice_id=KOKORO_VOICE)
     llm = build_llm()
 
-    # Register the vision tool (frame pulled from the browser's video track).
-    llm.register_function(VISION_FUNCTION_NAME, make_web_vision_handler())
-    # Plus cross-session memory (remember/recall) and any configured MCP servers.
+    # Cross-session memory (remember/recall) and any configured MCP servers.
     mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
-    tools = ToolsSchema(
-        standard_tools=[vision_tool_schema(), *register_memory_tools(llm), *mcp_schemas]
-    )
+    tools = ToolsSchema(standard_tools=[*register_memory_tools(llm), *mcp_schemas])
 
     context = LLMContext(
         messages=[{"role": "system", "content": system_prompt()}],
@@ -138,8 +129,7 @@ async def bot(runner_args: RunnerArguments) -> None:
     transport = SmallWebRTCTransport(
         params=TransportParams(
             audio_in_enabled=True,
-            audio_out_enabled=True,
-            video_in_enabled=True,           # the webcam video track
+            audio_out_enabled=True,          # voice-only: no video track this phase
             vad_analyzer=SileroVADAnalyzer(),
         ),
         webrtc_connection=runner_args.webrtc_connection,

@@ -1,20 +1,21 @@
 # 🤖 JARVIS & ECHO 2.0 — Pipecat + Claude (fully-local voice)
 
-A real-time **Voice + Vision AI assistant** you can talk to. It listens, thinks,
-talks back, and can *see* through your webcam when you ask it to.
+A real-time **Voice AI assistant** you can talk to. It listens, thinks, and talks
+back. **Voice-only this phase** — webcam vision is quarantined in
+[`/deferred`](./deferred) until it's back in scope.
 
 This version runs **off LiveKit Agents onto [Pipecat](https://pipecat.ai)**, with
-an **open-source / self-hosted** voice stack. STT, TTS, VAD, and the webcam all
-run locally; the thinking is routed through **ECHO**.
+an **open-source / self-hosted** voice stack. STT, TTS, and VAD all run locally;
+the thinking is routed through **ECHO**.
 
 ## Two components, one system
 
 This is a monorepo with two parts:
 
 - **JARVIS** (this top level) — the voice front-end: mic → STT → LLM → TTS →
-  speaker, with a webcam **vision** tool, cross-session **memory**
-  (`remember`/`recall`), and **MCP** agent tools from any configured Model
-  Context Protocol servers.
+  speaker, with cross-session **memory** (`remember`/`recall`) and **MCP** agent
+  tools from any configured Model Context Protocol servers. (Webcam vision is
+  deferred — see [`/deferred`](./deferred).)
 - **[ECHO](./echo)** — a multi-provider LLM proxy (the brain/router): one
   OpenAI-compatible endpoint with 6 tiers, 16 model aliases, fallback chains,
   Langfuse observability, and cost/token/latency logging. Built on LiteLLM.
@@ -34,13 +35,11 @@ to run the proxy.
 | STT          | Deepgram (cloud)       | **Whisper** (local, no key)         |
 | TTS          | OpenAI `alloy` (cloud) | **Kokoro** (local ONNX, no key)     |
 | VAD          | Silero                 | Silero (unchanged)                  |
-| Vision       | webcam → GPT-4o        | webcam → **Claude vision** tool     |
+| Vision       | webcam → GPT-4o        | **deferred** (voice-only phase)     |
 | Transport    | browser / LiveKit      | local microphone + speaker / WebRTC |
 
 ```
-mic --> Whisper (STT) --> "Hey JARVIS" gate --> Claude --> Kokoro (TTS) --> speaker
-                                                  |
-                                            webcam (vision tool)
+mic --> Whisper (STT) --> "Hey JARVIS" gate --> LLM (ECHO) --> Kokoro (TTS) --> speaker
 ```
 
 ---
@@ -48,8 +47,8 @@ mic --> Whisper (STT) --> "Hey JARVIS" gate --> Claude --> Kokoro (TTS) --> spea
 ## Files
 
 - `assistant.py` — desktop build: local microphone + speaker
-- `assistant_web.py` — **browser build: WebRTC mic + webcam** (closest to the old LiveKit setup)
-- `vision.py` — user-triggered webcam capture (OpenCV for desktop, WebRTC video track for browser)
+- `assistant_web.py` — **browser build: WebRTC mic** (closest to the old LiveKit setup)
+- `deferred/vision.py` — webcam vision tool, **quarantined** (voice-only phase)
 - `wakeword.py` — **"Hey JARVIS" wake-phrase gate** (fully local, no extra models)
 - `memory/` + `memory_tools.py` — cross-session memory (`remember`/`recall`); Obsidian vault or Supabase pgvector
 - `mcp_config.py` + `mcp_tools.py` — **MCP agent tools** from configured Model Context Protocol servers
