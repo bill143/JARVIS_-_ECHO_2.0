@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JARVIS &amp; ECHO 2.0 — Feature Catalog</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #161d2e;
+    --row: #1b2336;
+    --row-alt: #182032;
+    --ink: #e8edf6;
+    --muted: #9fb0cc;
+    --accent: #4fd1c5;
+    --accent2: #7aa2ff;
+    --border: #2a3654;
+    --code: #ffd9a0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 28px 32px 60px;
+  }
+  header { margin-bottom: 8px; }
+  h1 { margin: 0; font-size: 30px; letter-spacing: .5px; }
+  h1 .echo { color: var(--accent); }
+  .subtitle { color: var(--muted); margin: 6px 0 0; font-size: 15px; }
+  .legend {
+    margin: 18px 0 24px; color: var(--muted); font-size: 13px;
+    border-left: 3px solid var(--accent); padding-left: 12px;
+  }
+  h2 {
+    margin: 34px 0 6px; font-size: 20px; color: var(--ink);
+    display: flex; align-items: center; gap: 10px;
+  }
+  h2 .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  h2 .tag {
+    font-size: 11px; font-weight: 600; color: var(--bg);
+    background: var(--accent); padding: 2px 8px; border-radius: 20px; letter-spacing: .3px;
+  }
+  h2 .tag.legacy { background: #6b7a99; }
+  .section-note { color: var(--muted); font-size: 13px; margin: 2px 0 12px; }
+
+  table {
+    width: 100%; border-collapse: collapse; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    table-layout: fixed;
+  }
+  col.c-name   { width: 14%; }
+  col.c-func   { width: 15%; }
+  col.c-sum    { width: 33%; }
+  col.c-act    { width: 22%; }
+  col.c-file   { width: 16%; }
+  thead th {
+    text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--bg); background: var(--accent2); padding: 11px 14px; position: sticky; top: 0;
+  }
+  tbody td { padding: 12px 14px; vertical-align: top; border-top: 1px solid var(--border); }
+  tbody tr:nth-child(odd)  td { background: var(--row); }
+  tbody tr:nth-child(even) td { background: var(--row-alt); }
+  td.name { font-weight: 600; color: #fff; }
+  td.act  { color: var(--muted); }
+  code, .file {
+    font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 12.5px; color: var(--code); word-break: break-word;
+  }
+  .pill {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 12px;
+    background: #24304a; color: var(--accent); border: 1px solid var(--border); margin-right: 4px;
+  }
+  footer { margin-top: 40px; color: var(--muted); font-size: 12.5px; }
+  a { color: var(--accent2); }
+  td.act a { font-weight: 600; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; margin: 8px 0 22px; flex-wrap: wrap; }
+  .tab-btn {
+    font: inherit; font-weight: 600; color: var(--muted); cursor: pointer;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px;
+  }
+  .tab-btn:hover { color: var(--ink); }
+  .tab-btn.active { color: var(--bg); background: var(--accent); border-color: var(--accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  @media print {
+    .tabs { display: none !important; }
+    .tab-panel { display: block !important; }
+    .tab-panel + .tab-panel { page-break-before: always; }
+  }
+
+  /* Complete Setup call-to-action */
+  .cta {
+    background: linear-gradient(135deg, #14304a, #1b2336);
+    border: 1px solid var(--accent); border-radius: 14px;
+    padding: 20px 22px; margin: 4px 0 26px;
+  }
+  .cta-title { font-size: 18px; font-weight: 700; color: #fff; margin: 0 0 6px; }
+  .cta p { margin: 6px 0; color: var(--ink); }
+  .cta-link {
+    display: inline-block; margin: 8px 10px 8px 0; padding: 12px 22px;
+    background: var(--accent); color: #06231f; font-weight: 700; font-size: 15px;
+    text-decoration: none; border-radius: 10px;
+  }
+  .cta-link:hover { filter: brightness(1.08); }
+  .cta-link.alt { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .cta-note { font-size: 12.5px; color: var(--muted); }
+  .cta-note code { color: var(--code); }
+
+  /* Print: force landscape so it fills the page side-to-side */
+  @page { size: A4 landscape; margin: 12mm; }
+  @media print {
+    body { background: #fff; color: #111; padding: 0; }
+    table { background: #fff; border-color: #bbb; }
+    thead th { background: #2b3a67; color: #fff; }
+    tbody tr td { background: #fff !important; }
+    td.name { color: #000; }
+    code, .file { color: #8a4b00; }
+    h2 .tag { color: #fff; background: #2b3a67; }
+    .legend { color: #444; }
+    .subtitle, .section-note, td.act, footer { color: #444; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>JARVIS &amp; <span class="echo">ECHO</span> 2.0 — Feature Catalog</h1>
+  <p class="subtitle">A real-time Voice + Vision assistant (Claude), a Telegram markets agent, and the original LiveKit build.</p>
+</header>
+
+<p class="legend">
+  Best viewed in <strong>landscape</strong> (it prints landscape automatically — File → Print → Save as PDF).
+  Columns: <strong>Name · Function · Summary · Activate · File Location</strong>.
+  Paths are relative to the repository root. Use the tabs to switch between what's
+  <strong>installed</strong> and what's <strong>available but not installed</strong>.
+</p>
+
+<div class="tabs" role="tablist">
+  <button class="tab-btn active" data-tab="installed">✅ Installed features</button>
+  <button class="tab-btn" data-tab="available">➕ Available (not installed)</button>
+</div>
+
+<!-- ======================= TAB 1: INSTALLED ======================= -->
+<div class="tab-panel active" id="installed">
+
+  <div class="cta">
+    <p class="cta-title">⚡ Complete Setup — one file does everything</p>
+    <p>This runs a <strong>Computer Setup Search</strong> (scans your PC, read-only), then installs
+       Python + all the libraries, asks for your API keys once, and launches Alloy.</p>
+    <a class="cta-link" href="vision-agents/complete-setup.bat" download>⬇ Complete Setup (Windows)</a>
+    <a class="cta-link alt" href="vision-agents/complete-setup.command" download>⬇ Complete Setup (Mac)</a>
+    <p class="cta-note">
+      <strong>How this works (please read):</strong> for your safety, a web link <em>cannot</em> run a
+      program on your computer — so clicking the button <em>downloads</em> the setup file. Then
+      <strong>double-click the downloaded <code>complete-setup.bat</code></strong> to run it. If Windows shows a
+      blue “Windows protected your PC” box, click <code>More info → Run anyway</code> (it's your own file).
+      Easiest of all: just double-click <code>complete-setup.bat</code> inside the <code>vision-agents</code> folder.
+    </p>
+  </div>
+
+<!-- ============================ ALLOY ============================ -->
+<h2><span class="dot" style="background:#4fd1c5"></span> Alloy — Voice + Vision Assistant <span class="tag">primary app</span></h2>
+<p class="section-note">Talk to it in your browser; it hears, sees (via Claude + Moondream), and talks back. Built on GetStream Vision Agents. Folder: <code>vision-agents/</code></p>
+<table>
+  <colgroup><col class="c-name"><col class="c-func"><col class="c-sum"><col class="c-act"><col class="c-file"></colgroup>
+  <thead><tr><th>Name</th><th>Function</th><th>Summary of feature</th><th>Activate (how to activate)</th><th>File location</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="name">Real-time call</td>
+      <td>Transport / connection</td>
+      <td>Browser webcam + mic streamed over Stream's low-latency edge network; the agent joins the call.</td>
+      <td class="act">Run setup, then a demo page opens — allow camera + mic and start talking.</td>
+      <td class="file">vision-agents/agent.py <span class="pill">getstream.Edge</span></td>
+    </tr>
+    <tr>
+      <td class="name">Speech-to-text</td>
+      <td>Hearing</td>
+      <td>Deepgram transcribes your speech and handles turn-taking (knowing when you've finished).</td>
+      <td class="act">Automatic whenever you speak.</td>
+      <td class="file">vision-agents/agent.py <span class="pill">deepgram.STT</span></td>
+    </tr>
+    <tr>
+      <td class="name">The brain (Claude)</td>
+      <td>Reasoning + persona</td>
+      <td>Claude Opus 4.8 holds the conversation, the "Alloy" personality, and decides which tool to call.</td>
+      <td class="act">Automatic. Change the model via <code>LLM_MODEL</code> (e.g. claude-sonnet-4-6 for cheaper).</td>
+      <td class="file">vision-agents/agent.py <span class="pill">anthropic.LLM</span></td>
+    </tr>
+    <tr>
+      <td class="name">Text-to-speech</td>
+      <td>Voice</td>
+      <td>ElevenLabs turns Claude's replies into a natural spoken voice.</td>
+      <td class="act">Automatic. Change the voice via the ElevenLabs <code>model_id</code>.</td>
+      <td class="file">vision-agents/agent.py <span class="pill">elevenlabs.TTS</span></td>
+    </tr>
+    <tr>
+      <td class="name">Webcam capture</td>
+      <td>Eyes (frame buffer)</td>
+      <td>A tiny processor keeps the latest webcam frame so the vision tools can ask about it on demand.</td>
+      <td class="act">Automatic when your camera is on. Tune refresh via <code>VISION_FPS</code>.</td>
+      <td class="file">vision-agents/agent.py <span class="pill">WebcamEyes</span></td>
+    </tr>
+    <tr>
+      <td class="name">look</td>
+      <td>Vision tool</td>
+      <td>Claude calls Moondream's vision model on the current frame to describe what's on camera.</td>
+      <td class="act">Say "What do you see?" / "What am I holding?"</td>
+      <td class="file">vision-agents/agent.py <span class="pill">look()</span></td>
+    </tr>
+    <tr>
+      <td class="name">read_text</td>
+      <td>Vision tool (OCR)</td>
+      <td>Reads and transcribes any text you hold up to the camera — labels, signs, pages, screens.</td>
+      <td class="act">Say "Read this label / sign / page."</td>
+      <td class="file">vision-agents/agent.py <span class="pill">read_text()</span></td>
+    </tr>
+    <tr>
+      <td class="name">find_object</td>
+      <td>Vision tool (detect)</td>
+      <td>Checks whether a named object is currently visible using Moondream object detection.</td>
+      <td class="act">Say "Can you see my keys / mug / phone?"</td>
+      <td class="file">vision-agents/agent.py <span class="pill">find_object()</span></td>
+    </tr>
+    <tr>
+      <td class="name">get_weather</td>
+      <td>Info tool</td>
+      <td>Returns current weather for a city or location (built-in helper — no extra key).</td>
+      <td class="act">Say "What's the weather in Boston?"</td>
+      <td class="file">vision-agents/agent.py <span class="pill">get_weather()</span></td>
+    </tr>
+    <tr>
+      <td class="name">get_current_time</td>
+      <td>Info tool</td>
+      <td>Gives today's date and the current local time.</td>
+      <td class="act">Say "What time is it?" / "What's today's date?"</td>
+      <td class="file">vision-agents/agent.py <span class="pill">get_current_time()</span></td>
+    </tr>
+    <tr>
+      <td class="name">remember</td>
+      <td>Memory tool</td>
+      <td>Saves a short note to a local file so Alloy can recall it later.</td>
+      <td class="act">Say "Remember that my router is in the closet."</td>
+      <td class="file">vision-agents/agent.py <span class="pill">remember()</span> → notes.json</td>
+    </tr>
+    <tr>
+      <td class="name">recall</td>
+      <td>Memory tool</td>
+      <td>Reads back the notes you've asked Alloy to remember.</td>
+      <td class="act">Say "What do you remember?" / "Where's my router?"</td>
+      <td class="file">vision-agents/agent.py <span class="pill">recall()</span> → notes.json</td>
+    </tr>
+    <tr>
+      <td class="name">search_web</td>
+      <td>Info tool (optional)</td>
+      <td>Searches the web for current facts/news via Tavily. Degrades gracefully if no key is set.</td>
+      <td class="act">Say "Search the web for…". Requires <code>TAVILY_API_KEY</code> (optional at setup).</td>
+      <td class="file">vision-agents/agent.py <span class="pill">search_web()</span></td>
+    </tr>
+    <tr>
+      <td class="name">Honesty rule</td>
+      <td>Safety / behavior</td>
+      <td>Alloy admits when it has no tool for a request and never invents facts, numbers, or results.</td>
+      <td class="act">Always on (baked into the system prompt).</td>
+      <td class="file">vision-agents/agent.py <span class="pill">INSTRUCTIONS</span></td>
+    </tr>
+    <tr>
+      <td class="name">Complete Setup</td>
+      <td>Scan · install · launch</td>
+      <td>Scans your PC (Computer Setup Search), installs uv + Python 3.13 + libraries, collects keys, and launches — all in one file.</td>
+      <td class="act">▶ <a href="vision-agents/complete-setup.bat" download>complete-setup.bat</a> (download &amp; double-click) — see the banner above for how links work.</td>
+      <td class="file">vision-agents/complete-setup.bat · scan.ps1 · setup.bat</td>
+    </tr>
+    <tr>
+      <td class="name">API keys / config</td>
+      <td>Configuration</td>
+      <td>Stream, Anthropic, Deepgram, ElevenLabs, Moondream (+ optional Tavily) keys, stored locally.</td>
+      <td class="act">Setup writes them to <code>.env</code>; edit that file to change keys later.</td>
+      <td class="file">vision-agents/.env (from .env.example)</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================ ECHO ============================ -->
+<h2><span class="dot" style="background:#7aa2ff"></span> ECHO — Telegram Markets Agent <span class="tag">n8n</span></h2>
+<p class="section-note">A Telegram bot (text / voice / image) on n8n with Gmail, Calendar, Contacts &amp; web search. Import into n8n Cloud. Folder: <code>echo/</code></p>
+<table>
+  <colgroup><col class="c-name"><col class="c-func"><col class="c-sum"><col class="c-act"><col class="c-file"></colgroup>
+  <thead><tr><th>Name</th><th>Function</th><th>Summary of feature</th><th>Activate (how to activate)</th><th>File location</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="name">Text chat</td>
+      <td>Conversation</td>
+      <td>Send text to the bot; ECHO replies with its markets persona, tools, and memory.</td>
+      <td class="act">Message the Telegram bot any text.</td>
+      <td class="file">echo/ECHO.json <span class="pill">Switch → text</span></td>
+    </tr>
+    <tr>
+      <td class="name">Voice chat</td>
+      <td>Conversation</td>
+      <td>Send a voice note; it's transcribed (Whisper), answered, and replied to as a voice note.</td>
+      <td class="act">Send a Telegram voice message.</td>
+      <td class="file">echo/ECHO.json <span class="pill">Transcribe · Audio Response</span></td>
+    </tr>
+    <tr>
+      <td class="name">Image chat</td>
+      <td>Vision</td>
+      <td>Send a photo (e.g. a chart); the vision model describes it and feeds that into the agent.</td>
+      <td class="act">Send a Telegram photo (optionally with a caption/question).</td>
+      <td class="file">echo/ECHO.json <span class="pill">Analyze Image → Image Agent Input</span></td>
+    </tr>
+    <tr>
+      <td class="name">Memory</td>
+      <td>Context</td>
+      <td>Remembers the last 20 turns per chat so the conversation stays coherent.</td>
+      <td class="act">Automatic, keyed on your Telegram chat id.</td>
+      <td class="file">echo/ECHO.json <span class="pill">Window Buffer Memory</span></td>
+    </tr>
+    <tr>
+      <td class="name">Tools</td>
+      <td>Actions</td>
+      <td>Google Search (SerpAPI), Get/Send Email (Gmail), Get/Set Calendar, Contacts (Pinecone).</td>
+      <td class="act">Ask in plain language; ECHO picks the tool. Connect each credential in n8n.</td>
+      <td class="file">echo/ECHO.json <span class="pill">ai_tool nodes</span></td>
+    </tr>
+    <tr>
+      <td class="name">Sender allowlist</td>
+      <td>Security</td>
+      <td>Closed by default — only your Telegram id can use the bot; everyone else is dropped.</td>
+      <td class="act">Set <code>owner_chat_id</code> in the Owner ID node.</td>
+      <td class="file">echo/ECHO.json <span class="pill">Authorized? · Owner ID</span></td>
+    </tr>
+    <tr>
+      <td class="name">Tap-to-approve email</td>
+      <td>Security (human-in-loop)</td>
+      <td>ECHO can't send email on its own — it proposes one and you approve via Telegram buttons.</td>
+      <td class="act">Ask ECHO to email someone, then tap Approve / Cancel.</td>
+      <td class="file">echo/ECHO.json <span class="pill">Approve Send? → Send Email</span></td>
+    </tr>
+    <tr>
+      <td class="name">Recipient allowlist</td>
+      <td>Security</td>
+      <td>Outbound email is blocked unless the recipient's domain is on an editable allowlist.</td>
+      <td class="act">Edit <code>ALLOWED_DOMAINS</code> in the Recipient Allowed? node.</td>
+      <td class="file">echo/ECHO.json <span class="pill">Recipient Allowed?</span></td>
+    </tr>
+    <tr>
+      <td class="name">Import &amp; setup</td>
+      <td>Onboarding</td>
+      <td>Step-by-step guide to import the workflow into hosted n8n Cloud and connect credentials.</td>
+      <td class="act">Follow the README; import ECHO.json via n8n → Import from File.</td>
+      <td class="file">echo/README.md</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================ LEGACY ============================ -->
+<h2><span class="dot" style="background:#6b7a99"></span> Original LiveKit Assistant <span class="tag legacy">legacy</span></h2>
+<p class="section-note">The first build (LiveKit + GPT-4o). Superseded by Alloy — kept for reference; pinned to an older stack that won't install on Python 3.14. Folder: repository root.</p>
+<table>
+  <colgroup><col class="c-name"><col class="c-func"><col class="c-sum"><col class="c-act"><col class="c-file"></colgroup>
+  <thead><tr><th>Name</th><th>Function</th><th>Summary of feature</th><th>Activate (how to activate)</th><th>File location</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="name">Voice + vision agent</td>
+      <td>Assistant</td>
+      <td>LiveKit voice agent with Deepgram STT, Silero VAD, GPT-4o (LLM + vision), and OpenAI TTS ("alloy").</td>
+      <td class="act">Run setup, then connect via the LiveKit playground.</td>
+      <td class="file">assistant.py</td>
+    </tr>
+    <tr>
+      <td class="name">Webcam vision (function call)</td>
+      <td>Vision</td>
+      <td>Defaults to text-only; the model calls a function to attach the latest webcam frame only when needed.</td>
+      <td class="act">Ask a visual question (e.g. "Am I wearing glasses?").</td>
+      <td class="file">assistant.py <span class="pill">AssistantFunction.image</span></td>
+    </tr>
+    <tr>
+      <td class="name">One-step setup</td>
+      <td>Install &amp; launch</td>
+      <td>Checks Python, builds a venv, installs deps, downloads model files, collects keys, launches.</td>
+      <td class="act">Double-click <code>setup.bat</code> or run <code>bash setup.sh</code>.</td>
+      <td class="file">setup.bat · setup.sh</td>
+    </tr>
+    <tr>
+      <td class="name">API keys / config</td>
+      <td>Configuration</td>
+      <td>LiveKit (URL/key/secret), Deepgram, and OpenAI keys, loaded from a local .env via python-dotenv.</td>
+      <td class="act">Setup writes <code>.env</code>; edit it to change keys.</td>
+      <td class="file">.env (from .env.example)</td>
+    </tr>
+  </tbody>
+</table>
+
+</div><!-- /installed -->
+
+<!-- ====================== TAB 2: AVAILABLE ======================= -->
+<div class="tab-panel" id="available">
+
+  <p class="legend" style="border-color:var(--accent2)">
+    Capabilities the underlying stack <strong>supports but that are not currently wired in</strong>.
+    Here <strong>Activate</strong> means <em>how to enable/install it</em>, and
+    <strong>File location</strong> is <em>where it would plug in</em>.
+  </p>
+
+  <h2><span class="dot" style="background:#4fd1c5"></span> Alloy — supported, not yet wired <span class="tag">Vision Agents</span></h2>
+  <p class="section-note">Mostly one-line swaps or one extra plugin in <code>vision-agents/agent.py</code>.</p>
+  <table>
+    <colgroup><col class="c-name"><col class="c-func"><col class="c-sum"><col class="c-act"><col class="c-file"></colgroup>
+    <thead><tr><th>Name</th><th>Function</th><th>Summary of feature</th><th>Activate (how to enable)</th><th>File location</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Realtime vision LLM</td><td>LLM swap</td><td>Gemini Live / OpenAI Realtime stream the video natively for continuous, lowest-latency vision (but replace Claude).</td><td class="act">Set <code>llm=gemini.Realtime()</code> (or openai.Realtime()); drop stt/tts.</td><td class="file">vision-agents/agent.py <span class="pill">llm=</span></td></tr>
+      <tr><td class="name">On-screen avatar</td><td>Presence</td><td>Give Alloy an animated talking face (LemonSlice / Anam / LiveAvatar).</td><td class="act">Add the avatar plugin + extra; pass it to the Agent.</td><td class="file">agent.py + requirements.txt</td></tr>
+      <tr><td class="name">YOLO pose / object tracking</td><td>Vision processor</td><td>Real-time pose &amp; object detection for coaching, sports, fitness; feeds a realtime LLM.</td><td class="act">Add <code>ultralytics.YOLOPoseProcessor(...)</code> to processors.</td><td class="file">agent.py <span class="pill">processors=[]</span></td></tr>
+      <tr><td class="name">Roboflow custom CV</td><td>Vision processor</td><td>Run your own trained detection / moderation model over the video stream.</td><td class="act">Add the Roboflow processor.</td><td class="file">agent.py <span class="pill">processors=[]</span></td></tr>
+      <tr><td class="name">Phone calling (Twilio)</td><td>Channel</td><td>Talk to Alloy over a real phone call (inbound/outbound), not just the browser.</td><td class="act">Add Twilio + a phone number; wire the call flow.</td><td class="file">new flow (see Vision Agents examples/03)</td></tr>
+      <tr><td class="name">MCP tool servers</td><td>Tools</td><td>Connect any MCP server (GitHub, Linear, calendars, telephony) as Alloy tools.</td><td class="act">Register an MCP server alongside the existing tools.</td><td class="file">agent.py <span class="pill">build_brain()</span></td></tr>
+      <tr><td class="name">RAG over your documents</td><td>Knowledge</td><td>Answer from your own files/notes via vector search (TurboPuffer / Qdrant).</td><td class="act">Add a vector store + a retrieval tool.</td><td class="file">agent.py</td></tr>
+      <tr><td class="name">Cross-session memory</td><td>Memory</td><td>Remember across calls/sessions (today's notes are local and per-session).</td><td class="act">Back memory with Stream Chat instead of notes.json.</td><td class="file">agent.py <span class="pill">remember/recall</span></td></tr>
+      <tr><td class="name">Text back-channel</td><td>Steering</td><td>Silently send the agent instructions mid-call (overlays, nudges, hand-off).</td><td class="act">Enable the back-channel message handler.</td><td class="file">agent.py</td></tr>
+      <tr><td class="name">Alternative speech-to-text</td><td>Swap</td><td>AssemblyAI, Faster-Whisper, Mistral Voxtral, Fish, Wizper instead of Deepgram.</td><td class="act">Swap the <code>stt=</code> line.</td><td class="file">agent.py <span class="pill">stt=</span></td></tr>
+      <tr><td class="name">Alternative voice (TTS)</td><td>Swap</td><td>Cartesia, Deepgram, AWS Polly, Kokoro, Inworld, Fish voices instead of ElevenLabs.</td><td class="act">Swap the <code>tts=</code> line.</td><td class="file">agent.py <span class="pill">tts=</span></td></tr>
+      <tr><td class="name">Smart turn detection</td><td>Conversation</td><td>More natural turn-taking via Smart Turn (Fal) or Vogent, beyond Deepgram's built-in.</td><td class="act">Add <code>turn_detection=...</code> (needs a Fal / Vogent key).</td><td class="file">agent.py</td></tr>
+      <tr><td class="name">Production server + metrics</td><td>Ops</td><td>Built-in HTTP server, Prometheus metrics, horizontal scaling, Kubernetes deploy.</td><td class="act">Run in agent-server mode; enable metrics.</td><td class="file">Vision Agents examples 06/07/08 + guides</td></tr>
+      <tr><td class="name">Embed in your own app</td><td>Client</td><td>Put Alloy in a React / iOS / Android / Flutter / RN / Unity app instead of the demo page.</td><td class="act">Use Stream's client SDK for your platform.</td><td class="file">external client app</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="dot" style="background:#7aa2ff"></span> Extra Alloy tools we discussed <span class="tag">quick adds</span></h2>
+  <p class="section-note">Each is one <code>register_function</code> tool — same pattern as the installed ones.</p>
+  <table>
+    <colgroup><col class="c-name"><col class="c-func"><col class="c-sum"><col class="c-act"><col class="c-file"></colgroup>
+    <thead><tr><th>Name</th><th>Function</th><th>Summary of feature</th><th>Activate (how to enable)</th><th>File location</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Crypto / stock price</td><td>Info tool</td><td>"What's BTC at?" via a free price API (CoinGecko, no key); stocks need a key.</td><td class="act">Add a <code>get_price()</code> register_function.</td><td class="file">vision-agents/agent.py</td></tr>
+      <tr><td class="name">Set timer / reminder</td><td>Productivity tool</td><td>"Remind me in 10 minutes" — Alloy speaks up when the timer ends.</td><td class="act">Add a <code>set_timer()</code> tool (asyncio task).</td><td class="file">vision-agents/agent.py</td></tr>
+      <tr><td class="name">Send email / schedule</td><td>Action tool</td><td>Let Alloy send email or create calendar events by voice (ECHO-style), with approval.</td><td class="act">Add tools + Google OAuth; gate with a confirm step.</td><td class="file">vision-agents/agent.py</td></tr>
+      <tr><td class="name">Vision self-test</td><td>QA</td><td>A <code>--selftest</code> flag that grabs one frame and runs look() to verify the vision path without a full call.</td><td class="act">Add a CLI branch to the runner.</td><td class="file">vision-agents/agent.py</td></tr>
+    </tbody>
+  </table>
+
+  <h2><span class="dot" style="background:#9aa7c2"></span> ECHO — supported, not enabled <span class="tag legacy">n8n</span></h2>
+  <p class="section-note">Additional nodes/integrations the n8n workflow can take on.</p>
+  <table>
+    <colgroup><col class="c-name"><col class="c-func"><col class="c-sum"><col class="c-act"><col class="c-file"></colgroup>
+    <thead><tr><th>Name</th><th>Function</th><th>Summary of feature</th><th>Activate (how to enable)</th><th>File location</th></tr></thead>
+    <tbody>
+      <tr><td class="name">Phone line (Twilio)</td><td>Channel</td><td>A voice phone number into ECHO with bidirectional audio.</td><td class="act">Add Twilio nodes to the workflow.</td><td class="file">echo/ECHO.json</td></tr>
+      <tr><td class="name">RAG / knowledge base</td><td>Knowledge</td><td>Answer from your own documents via TurboPuffer / Qdrant vector search.</td><td class="act">Add a vector-store retrieval tool node.</td><td class="file">echo/ECHO.json</td></tr>
+      <tr><td class="name">MCP tool servers</td><td>Tools</td><td>Connect external MCP servers (e.g. Linear, telephony) as ECHO tools.</td><td class="act">Add an MCP client tool node.</td><td class="file">echo/ECHO.json</td></tr>
+      <tr><td class="name">Hard Send-Email guard</td><td>Security</td><td>A tap-to-approve / domain allowlist on email (already present); extend the same gate to calendar.</td><td class="act">Mirror the Approve Send? pattern before Set Calendar.</td><td class="file">echo/ECHO.json</td></tr>
+    </tbody>
+  </table>
+
+</div><!-- /available -->
+
+<footer>
+  JARVIS &amp; ECHO 2.0 · github.com/bill143/JARVIS_-_ECHO_2.0 · Alloy on PR #3, ECHO on PR #1/#2.
+  Generated as a feature reference — open in any browser; print to PDF in landscape.
+</footer>
+
+<script>
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
+      document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      window.scrollTo({ top: 0 });
+    });
+  });
+</script>
+</body>
+</html>

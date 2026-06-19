@@ -1,0 +1,6 @@
+# JARVIS · Alloy voice + vision assistant (GetStream Vision Agents)
+# The extras pull in just the integrations this agent uses.
+# moondream = the cloud vision model behind Claude's look/read_text/find_object tools (no GPU).
+vision-agents[getstream,anthropic,deepgram,elevenlabs,moondream]
+python-dotenv>=1.0
+tavily-python>=0.5   # web search tool (only used if TAVILY_API_KEY is set)
