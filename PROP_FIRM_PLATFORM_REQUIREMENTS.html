@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prop Firm Review Platform — Master Requirements</title>
+<style>
+  :root {
+    --ink: #0d1117;
+    --panel: #11161f;
+    --panel-edge: #1f2630;
+    --paper: #f5f3ee;
+    --muted: #8a93a0;
+    --line: #232b36;
+    --bid: #2dd4a7;        /* token / auction green */
+    --bid-dim: #145c49;
+    --tape: #e8b04b;        /* ticker amber */
+    --flag: #e5564b;        /* legal flag red */
+    --flag-bg: #2a1614;
+    --conf: #2dd4a7;
+    --prop: #5aa9e6;        /* proposed / from-competitor blue */
+    --prop-dim: #1d3a52;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 48px 28px 80px; }
+
+  /* ---- Header: a trading-tape masthead ---- */
+  header { border-bottom: 2px solid var(--line); padding-bottom: 28px; margin-bottom: 8px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--bid);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    line-height: 1.05;
+    margin: 0 0 16px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .sub { color: var(--muted); font-size: 15px; max-width: 60ch; margin: 0; }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    margin-top: 22px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .meta b { color: var(--paper); font-weight: 600; }
+
+  /* ---- Running ticker of confirmed counts ---- */
+  .tape {
+    display: flex;
+    gap: 0;
+    margin: 28px 0 40px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    font-family: var(--mono);
+  }
+  .tape div {
+    flex: 1;
+    padding: 14px 18px;
+    border-right: 1px solid var(--line);
+  }
+  .tape div:last-child { border-right: 0; }
+  .tape .k { font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
+  .tape .v { font-size: 22px; font-weight: 700; color: var(--paper); margin-top: 4px; }
+  .tape .v.green { color: var(--bid); }
+  .tape .v.amber { color: var(--tape); }
+  .tape .v.blue { color: var(--prop); }
+
+  /* ---- Section divider ---- */
+  .divider {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 44px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .divider b { color: var(--prop); font-weight: 700; }
+
+  /* ---- Item cards ---- */
+  .item {
+    border: 1px solid var(--panel-edge);
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 26px 26px 22px;
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .item.proposed { border-left: 3px solid var(--prop); }
+
+  .item-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .num {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    background: var(--bid);
+    width: 34px; height: 34px;
+    display: grid; place-items: center;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .item.proposed .num { background: var(--prop); }
+
+  .item-title { font-size: 21px; font-weight: 700; letter-spacing: -0.01em; margin: 0; flex: 1; min-width: 240px; }
+
+  .cat {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bid);
+    border: 1px solid var(--bid-dim);
+    border-radius: 999px;
+    padding: 5px 12px;
+    white-space: nowrap;
+  }
+  .item.proposed .cat { color: var(--prop); border-color: var(--prop-dim); }
+
+  .desc { color: #c4ccd6; font-size: 14.5px; margin: 0 0 18px; }
+
+  .block-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 18px 0 10px;
+  }
+
+  ul.sub-list { margin: 0; padding: 0; list-style: none; }
+  ul.sub-list li {
+    padding: 9px 0 9px 26px;
+    border-top: 1px solid var(--line);
+    position: relative;
+    font-size: 14px;
+    color: #d6dce4;
+  }
+  ul.sub-list li:before {
+    content: "▸";
+    position: absolute;
+    left: 4px;
+    color: var(--bid);
+    font-size: 12px;
+    top: 10px;
+  }
+  .item.proposed ul.sub-list li:before { color: var(--prop); }
+  ul.sub-list li b { color: var(--paper); font-weight: 600; }
+
+  .source {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--line);
+  }
+  .source b { color: #aab2bd; }
+
+  /* ---- Legal flag callout ---- */
+  .flag {
+    margin-top: 18px;
+    border: 1px solid var(--flag);
+    background: var(--flag-bg);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .flag .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--flag);
+    font-weight: 700;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .flag p { margin: 0; font-size: 13.5px; color: #e9c9c5; }
+
+  /* ---- Footer ---- */
+  footer {
+    margin-top: 44px;
+    padding-top: 22px;
+    border-top: 2px solid var(--line);
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .item, .tape { border-color: #ccc; background: #fff; break-inside: avoid; }
+    .num { background: #000; color: #fff; }
+    .cat, .source, .eyebrow, .tape .v.green, .tape .v.blue { color: #000; }
+    .flag { border-color: #000; background: #f5f5f5; }
+    .flag p, .desc, ul.sub-list li { color: #222; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Master Requirements · Working Document</p>
+    <h1>Prop Firm Review Platform</h1>
+    <p class="sub">A running build list captured item-by-item from competitor review and Bill's own concepts. Each entry carries its source so nothing is lost before the game-plan session.</p>
+    <div class="meta">
+      <span>Owner&nbsp; <b>Bill — ONeill Contractors, Inc.</b></span>
+      <span>Status&nbsp; <b>Collecting items</b></span>
+      <span>Last updated&nbsp; <b>Jun 26, 2026</b></span>
+    </div>
+  </header>
+
+  <div class="tape">
+    <div><div class="k">Items Logged</div><div class="v green">23</div></div>
+    <div><div class="k">Bill's Originals</div><div class="v">02</div></div>
+    <div><div class="k">From Competitor</div><div class="v blue">21</div></div>
+    <div><div class="k">Open Flags</div><div class="v amber">02</div></div>
+  </div>
+
+  <!-- ITEM 1 -->
+  <div class="item">
+    <div class="item-head">
+      <span class="num">01</span>
+      <h2 class="item-title">Prop Firm Portal</h2>
+      <span class="cat">Firm Portal</span>
+    </div>
+    <p class="desc">A dedicated, separate login for prop firm organizations — distinct from the public trader-facing side — where firms manage their presence, promotions, and customer responses.</p>
+
+    <div class="block-label">Core Functions</div>
+    <ul class="sub-list">
+      <li><b>Respond to comments</b> — reply to user reviews, both positive and negative.</li>
+      <li><b>Upload promotions</b> — add and manage incoming promotional offers.</li>
+      <li><b>Raffle / giveaway supply</b> — provide accounts or custom coupon codes for giveaways.</li>
+      <li><b>Coupon auto-redemption</b> — winner enters a raffle-specific custom coupon on the firm's own site, which auto-registers the funded account with no payment required.</li>
+    </ul>
+
+    <div class="block-label">Confirmed Add-Ons</div>
+    <ul class="sub-list">
+      <li><b>Verified Firm Badge / Claim-Your-Profile</b> — email or domain verification before a firm can respond or post promos; blocks impersonation.</li>
+      <li><b>Promo Performance Dashboard</b> — views, clicks, and redemptions per promotion, coupon, and raffle entry.</li>
+      <li><b>Coupon Inventory &amp; Expiry Management</b> — quantity caps, start/end dates, auto-deactivation of expired or fully-redeemed codes.</li>
+      <li><b>Response SLA &amp; Notifications</b> — alerts on new reviews (especially negative) plus a public "average response time" metric.</li>
+      <li><b>Firm Profile Content Block</b> — firm-maintained profit split, drawdown rules, payout speed, platforms, fees, account sizes (subject to approval).</li>
+      <li><b>Raffle Fulfillment Tracking</b> — winner-to-account/coupon log with redemption and delivery confirmation.</li>
+      <li><b>Tiered Firm Accounts</b> — Free (respond + claim) vs. Featured/paid (priority placement, banners, pinned raffles).</li>
+      <li><b>Dispute / Flag-a-Review</b> — firms flag suspected fake or defamatory reviews for moderation, with no delete rights.</li>
+      <li><b>API / Affiliate Link Handshake</b> — standardized tracked referral links doubling as a revenue stream.</li>
+    </ul>
+
+    <div class="source"><b>Source:</b> Bill's concept · confirmed Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> N/A</div>
+  </div>
+
+  <!-- ITEM 2 -->
+  <div class="item">
+    <div class="item-head">
+      <span class="num">02</span>
+      <h2 class="item-title">Penny-Auction Page (Token Bidding)</h2>
+      <span class="cat">Auctions / Monetization</span>
+    </div>
+    <p class="desc">A page that auctions top prop firm accounts using a paid-token bidding model, with a resetting final-day countdown to drive engagement while the user base is still growing.</p>
+
+    <div class="block-label">Mechanics</div>
+    <ul class="sub-list">
+      <li><b>Token purchase</b> — users buy tokens from the site (e.g., $0.10–$0.50 each); token packs in bundles (e.g., $10 → 40 tokens @ $0.25).</li>
+      <li><b>One token = one bid</b> — each bid raises the account price by a fixed increment.</li>
+      <li><b>Promo window</b> — auction runs multi-day (e.g., 7 days) to build momentum.</li>
+      <li><b>Resetting timer</b> — final day triggers a 30-second countdown that restarts on every new bid.</li>
+      <li><b>Winner</b> — when the timer hits zero with no new bid, the highest bidder wins the account.</li>
+    </ul>
+
+    <div class="flag">
+      <span class="tag">⚠ Open Legal Flag — resolve at game-plan</span>
+      <p>Pay-to-bid auctions where losing bidders forfeit token cost may qualify as an illegal lottery or gambling in some U.S. states. Solvable via buy-it-now escape valves, token refunds, or sweepstakes framing. Logged now so it's addressed before build, not after.</p>
+    </div>
+
+    <div class="source"><b>Source:</b> Bill's concept · logged Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> N/A</div>
+  </div>
+
+  <!-- ================= ADDED FROM COMPETITOR ANALYSIS ================= -->
+  <div class="divider">Added From Competitor Analysis · <b>forexpropreviews.com</b> — table-stakes features a "site like this" is expected to have</div>
+
+  <!-- ITEM 3 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">03</span>
+      <h2 class="item-title">Ranked Firm Directory ("Best 10")</h2>
+      <span class="cat">Core / Discovery</span>
+    </div>
+    <p class="desc">The flagship landing page: an editorially-ranked list of top prop firms with a sortable comparison table. This is the competitor's highest-traffic page (355k+ views) and the primary entry point to every firm.</p>
+    <div class="block-label">Includes</div>
+    <ul class="sub-list">
+      <li><b>Ranked list</b> — positions 1–10 (and beyond), each with rank, score, logo, and summary.</li>
+      <li><b>Comparison table</b> — sortable columns: firm name, rating, discount %, coupon code, "Visit" link.</li>
+      <li><b>Year-stamped rankings</b> — "Best Prop Firms 2026", refreshed periodically for SEO.</li>
+      <li><b>Dual CTAs per row</b> — "Visit Now" (affiliate) + "Read Review" (internal).</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /10-best-forex-prop-trading-firms/</div>
+  </div>
+
+  <!-- ITEM 4 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">04</span>
+      <h2 class="item-title">Individual Firm Review Pages</h2>
+      <span class="cat">Core / Content</span>
+    </div>
+    <p class="desc">One long-form review page per firm — the destination behind every "Read Review" link and the heart of the content engine.</p>
+    <div class="block-label">Profile Fields (the firm data model)</div>
+    <ul class="sub-list">
+      <li><b>Identity</b> — firm name, logo, legal entity, incorporation date, HQ location, CEO/founder, reputation summary.</li>
+      <li><b>Product</b> — challenge types (1/2/3-step, instant, futures), account size range, profit split %, payout reliability/speed, scaling plan, liquidity provider, supported platforms (MT4/5, cTrader, Match-Trader), fees.</li>
+      <li><b>Commercial</b> — discount %, coupon code, affiliate link, overall rating/score.</li>
+      <li><b>Editorial</b> — pros/cons, full review body, ranking position, embedded user comments.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> per-firm review pages</div>
+  </div>
+
+  <!-- ITEM 5 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">05</span>
+      <h2 class="item-title">Head-to-Head Comparison Engine</h2>
+      <span class="cat">Core / Tool</span>
+    </div>
+    <p class="desc">Dynamically-generated "Firm A vs. Firm B" pages that put two firms side by side. A major SEO surface — the competitor publishes dozens, grouped by challenge type.</p>
+    <ul class="sub-list">
+      <li><b>Side-by-side spec table</b> — every data-model field compared in two columns.</li>
+      <li><b>Grouped by challenge type</b> — Two-step, One-step, Three-step, Instant Funding comparison sets.</li>
+      <li><b>"Find a firm for your style" picker</b> — guided quiz/filter that recommends firms.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /comparisons/</div>
+  </div>
+
+  <!-- ITEM 6 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">06</span>
+      <h2 class="item-title">Live Prop Spreads Tracker</h2>
+      <span class="cat">Tool / Data Feed</span>
+    </div>
+    <p class="desc">A real-time tool comparing live trading spreads across firms — the competitor's strongest differentiator and hardest-to-copy feature.</p>
+    <ul class="sub-list">
+      <li><b>Live spread table</b> — per-instrument spreads across multiple firms, updated continuously.</li>
+      <li><b>Backend data pipeline</b> — scheduled job pulling spread data via API/feed into a database (the only feature here needing a true backend service, not just a CMS).</li>
+      <li><b>Historical view</b> — optional charts of spread over time per firm/instrument.</li>
+    </ul>
+    <div class="flag">
+      <span class="tag">⚠ Build Flag — data sourcing</span>
+      <p>Requires a reliable real-time market-data source per firm. Confirm feasibility (API access vs. scraping vs. firm-supplied data) at the game-plan session — this is the one item that can't ship as static/CMS content.</p>
+    </div>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /prop-spreads/</div>
+  </div>
+
+  <!-- ITEM 7 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">07</span>
+      <h2 class="item-title">Offers &amp; Discounts Hub</h2>
+      <span class="cat">Monetization</span>
+    </div>
+    <p class="desc">A single page aggregating every active coupon, discount, and "free challenge" offer across all firms — a top conversion driver. (Feeds from, and complements, the Firm Portal coupon system in item 01.)</p>
+    <ul class="sub-list">
+      <li><b>Coupon cards</b> — firm, discount %, code, copy-to-clipboard, expiry, "Claim" affiliate link.</li>
+      <li><b>Free challenge section</b> — no-cost/refundable evaluation offers highlighted separately.</li>
+      <li><b>Filter &amp; sort</b> — by discount size, firm, challenge type, expiry.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /offers/, /free-challenge/</div>
+  </div>
+
+  <!-- ITEM 8 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">08</span>
+      <h2 class="item-title">Prop News Blog</h2>
+      <span class="cat">Content / SEO</span>
+    </div>
+    <p class="desc">A continuously-updated news feed (the competitor posts multiple times daily) that keeps the site fresh, ranks for breaking firm news, and feeds the "Read More" related-content widgets.</p>
+    <ul class="sub-list">
+      <li><b>Article system</b> — title, thumbnail, body, author, publish date, view counter, tags.</li>
+      <li><b>News index + category feeds</b> — newest-first, with relative timestamps ("4 hours ago").</li>
+      <li><b>Related-content feed</b> — "Read More" thumbnails surfaced on review and ranking pages.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /prop-news/</div>
+  </div>
+
+  <!-- ITEM 9 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">09</span>
+      <h2 class="item-title">Education Hub / "Prop School"</h2>
+      <span class="cat">Content / SEO</span>
+    </div>
+    <p class="desc">Structured learning content organized by skill level — drives top-of-funnel search traffic from people new to prop trading.</p>
+    <ul class="sub-list">
+      <li><b>Tiered learning paths</b> — Beginner → Intermediate → Advanced → Professional.</li>
+      <li><b>Lesson + index templates</b> — articles covering account opening, evaluations, scaling, sessions, multi-firm strategy.</li>
+      <li><b>"Prop Facts" reference</b> — quick-hit factual reference section.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /prop-school/, /prop-facts/</div>
+  </div>
+
+  <!-- ITEM 10 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">10</span>
+      <h2 class="item-title">Prop Awards Program</h2>
+      <span class="cat">Brand / Engagement</span>
+    </div>
+    <p class="desc">An annual awards/badge program ranking firms by category — builds authority, gives firms a badge to display (driving backlinks), and creates a recurring marketing event.</p>
+    <ul class="sub-list">
+      <li><b>Award categories &amp; winners page</b> — best overall, best payout, best instant funding, etc.</li>
+      <li><b>Embeddable winner badges</b> — firms link back to the site, boosting SEO.</li>
+      <li><b>Optional voting</b> — community/user-voted categories for engagement.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /prop-awards/</div>
+  </div>
+
+  <!-- ITEM 11 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">11</span>
+      <h2 class="item-title">Public Reviews, Ratings &amp; Comments</h2>
+      <span class="cat">Community / UGC</span>
+    </div>
+    <p class="desc">The trader-facing side of the review system (firm-facing side is item 01). User-generated ratings and comments are the credibility engine of the whole platform.</p>
+    <ul class="sub-list">
+      <li><b>Star ratings</b> — aggregate score per firm from user votes.</li>
+      <li><b>Threaded comments</b> — avatar, name, body, timestamp, replies (incl. firm replies from item 01).</li>
+      <li><b>Moderation queue</b> — spam/abuse filtering, dispute handling, anti-fake-review checks.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> on-page comment widgets</div>
+  </div>
+
+  <!-- ITEM 12 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">12</span>
+      <h2 class="item-title">Community Forum</h2>
+      <span class="cat">Community</span>
+    </div>
+    <p class="desc">A standalone discussion forum ("Prop Forum") for traders — retention, recurring traffic, and a deep well of long-tail SEO content.</p>
+    <ul class="sub-list">
+      <li><b>Boards, threads, posts</b> — categorized discussion with user accounts.</li>
+      <li><b>Could run on Discourse/phpBB</b> — buy-vs-build decision for the game-plan.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /prop-forum/</div>
+  </div>
+
+  <!-- ITEM 13 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">13</span>
+      <h2 class="item-title">Newsletter / Email Capture</h2>
+      <span class="cat">Marketing</span>
+    </div>
+    <p class="desc">Email-list building throughout the site — owned audience for promoting offers, raffles (item 01), and auctions (item 02).</p>
+    <ul class="sub-list">
+      <li><b>Signup forms</b> — inline + footer ("exclusive reviews, ratings, news, offers").</li>
+      <li><b>ESP integration</b> — Mailchimp/ConvertKit/Klaviyo with double opt-in.</li>
+      <li><b>Segmentation</b> — by interest (offers, news, awards) for targeted sends.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> footer signup</div>
+  </div>
+
+  <!-- ITEM 14 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">14</span>
+      <h2 class="item-title">Promotional Banner Ad Inventory</h2>
+      <span class="cat">Monetization</span>
+    </div>
+    <p class="desc">Paid sidebar/banner placements sold to firms — a direct revenue line beyond affiliate commissions. (Ties to the Tiered Firm Accounts in item 01 and the "Advertise With Us" page in item 19.)</p>
+    <ul class="sub-list">
+      <li><b>Banner slots</b> — sidebar, in-feed, and homepage placements with branded creative.</li>
+      <li><b>Ad management</b> — scheduling, rotation, impression/click tracking, self-serve or managed.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> sidebar banners</div>
+  </div>
+
+  <!-- ITEM 15 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">15</span>
+      <h2 class="item-title">Search, Tags &amp; Filtering</h2>
+      <span class="cat">UX / Discovery</span>
+    </div>
+    <p class="desc">Site-wide search plus a tag taxonomy (by firm, challenge type, news category) so users can navigate a growing catalog of firms and articles.</p>
+    <ul class="sub-list">
+      <li><b>Global search</b> — across firms, reviews, news, education.</li>
+      <li><b>Tag system</b> — firm names, challenge types, topics; tag-archive pages.</li>
+      <li><b>Faceted filters</b> — on the directory: account size, platform, profit split, discount, payout speed.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> tag system</div>
+  </div>
+
+  <!-- ITEM 16 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">16</span>
+      <h2 class="item-title">Futures Prop Firms Vertical</h2>
+      <span class="cat">Core / Vertical</span>
+    </div>
+    <p class="desc">A parallel directory + reviews for futures (vs. forex) prop firms — a distinct, fast-growing segment with its own ranking and comparison pages.</p>
+    <ul class="sub-list">
+      <li><b>Dedicated "Best Futures Firms" ranking</b> — same templates as item 03, futures dataset.</li>
+      <li><b>Futures-specific fields</b> — contracts, evaluation rules, data fees.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /futures/</div>
+  </div>
+
+  <!-- ITEM 17 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">17</span>
+      <h2 class="item-title">Prospective / Upcoming Firms</h2>
+      <span class="cat">Content / Discovery</span>
+    </div>
+    <p class="desc">A watch-list section for newer or not-yet-fully-reviewed firms — captures early search interest and creates a pipeline into full reviews.</p>
+    <ul class="sub-list">
+      <li><b>Lightweight firm stubs</b> — basic profile + "review coming" status.</li>
+      <li><b>Promotion path</b> — graduate to a full review (item 04) once vetted.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /prospective-firms/</div>
+  </div>
+
+  <!-- ITEM 18 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">18</span>
+      <h2 class="item-title">Sister Verticals (Brokers · VPS · Trade Copiers)</h2>
+      <span class="cat">Expansion</span>
+    </div>
+    <p class="desc">Adjacent affiliate review properties the competitor cross-links: Best Forex Brokers, Forex VPS Reviews, Trade Copiers. Each reuses the same review/comparison templates against a different product category.</p>
+    <ul class="sub-list">
+      <li><b>Best Forex Brokers</b> — broker reviews + comparison.</li>
+      <li><b>Forex VPS Reviews</b> — hosting/VPS reviews.</li>
+      <li><b>Trade Copiers</b> — copy-trading tool reviews.</li>
+      <li><b>Decision</b> — same site/sections vs. separate satellite domains (as the competitor does).</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> Best Brokers / VPS / Trade Copiers</div>
+  </div>
+
+  <!-- ITEM 19 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">19</span>
+      <h2 class="item-title">Trust &amp; Transparency Pages</h2>
+      <span class="cat">Trust / Credibility</span>
+    </div>
+    <p class="desc">Pages that justify the rankings and disclose the business model — essential for credibility (and FTC compliance, see flag).</p>
+    <ul class="sub-list">
+      <li><b>"How We Test"</b> — methodology behind ratings and rankings.</li>
+      <li><b>"Advertise With Us"</b> — media kit / paid placement onboarding (feeds items 01 &amp; 14).</li>
+      <li><b>Affiliate disclosure</b> — clear statement that links are monetized.</li>
+    </ul>
+    <div class="flag">
+      <span class="tag">⚠ Open Legal Flag — resolve at game-plan</span>
+      <p>The entire model runs on affiliate links + paid placements. U.S. FTC rules require conspicuous disclosure of paid/affiliate relationships, and the "How We Test" methodology must honestly reflect any pay-for-placement. Build disclosure into templates from day one, not bolted on later.</p>
+    </div>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> /how-we-test/, /advertise-with-us/</div>
+  </div>
+
+  <!-- ITEM 20 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">20</span>
+      <h2 class="item-title">Legal &amp; Company Pages</h2>
+      <span class="cat">Compliance</span>
+    </div>
+    <p class="desc">Standard required pages every public site needs — easy to forget at scoping time.</p>
+    <ul class="sub-list">
+      <li><b>About Us</b>, <b>Contact Us</b>.</li>
+      <li><b>Privacy Policy</b>, <b>Terms &amp; Conditions</b>, <b>Cookie Policy</b> + consent banner.</li>
+      <li><b>Risk disclaimer</b> — trading-risk warning (standard for financial-adjacent sites).</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> footer legal links</div>
+  </div>
+
+  <!-- ITEM 21 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">21</span>
+      <h2 class="item-title">Social Media Integration</h2>
+      <span class="cat">Marketing / Reach</span>
+    </div>
+    <p class="desc">Social presence + on-site links across the channels the competitor runs, plus community channels where the audience actually lives.</p>
+    <ul class="sub-list">
+      <li><b>Profile links</b> — Facebook, X/Twitter, YouTube, Instagram.</li>
+      <li><b>Community channels</b> — Discord and Telegram (heavily used in this niche).</li>
+      <li><b>Share buttons</b> — on reviews, news, and offers.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> footer social icons</div>
+  </div>
+
+  <!-- ITEM 22 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">22</span>
+      <h2 class="item-title">Admin CMS &amp; Firm Database</h2>
+      <span class="cat">Infrastructure</span>
+    </div>
+    <p class="desc">The internal backbone: a content management system and a single structured firm database that powers the directory, review pages, comparison engine, and offers hub from one source of truth.</p>
+    <ul class="sub-list">
+      <li><b>Firm database</b> — one record per firm (all item-04 fields) feeding every public template.</li>
+      <li><b>Editorial CMS</b> — manage reviews, news, education, rankings, awards.</li>
+      <li><b>Roles &amp; permissions</b> — admin, editor, moderator, plus the firm-portal role (item 01).</li>
+      <li><b>SEO tooling</b> — schema markup, meta, sitemaps, redirects (critical for an SEO-driven model).</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis (inferred backbone) · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> N/A</div>
+  </div>
+
+  <!-- ITEM 23 -->
+  <div class="item proposed">
+    <div class="item-head">
+      <span class="num">23</span>
+      <h2 class="item-title">Affiliate &amp; Coupon Tracking System</h2>
+      <span class="cat">Monetization / Infra</span>
+    </div>
+    <p class="desc">The plumbing that makes the money model work: tracked affiliate links and coupon codes attributed across the site, with reporting. (Surfaces to firms via item 01's dashboards.)</p>
+    <ul class="sub-list">
+      <li><b>Tracked links</b> — per-firm, per-placement attribution and click logging.</li>
+      <li><b>Coupon engine</b> — codes, caps, expiry, redemption tracking (shared with item 07).</li>
+      <li><b>Revenue reporting</b> — clicks, conversions, commissions by firm/placement/page.</li>
+    </ul>
+    <div class="source"><b>Source:</b> forexpropreviews.com analysis · Jun 26, 2026 &nbsp;|&nbsp; <b>Link:</b> affiliate links sitewide</div>
+  </div>
+
+  <footer>
+    <span>PROP FIRM REVIEW PLATFORM — MASTER REQUIREMENTS</span>
+    <span>v2 · 23 items · 2 open flags</span>
+  </footer>
+
+</div>
+</body>
+</html>
