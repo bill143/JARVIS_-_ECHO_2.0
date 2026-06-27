@@ -1,0 +1,64 @@
+// Prisma schema for the Prop Firm Review Platform (MVP).
+//
+// Local dev uses SQLite. To switch to PostgreSQL for production, change the
+// `provider` below to "postgresql" and point DATABASE_URL at your Postgres
+// instance (see .env.example and README.md). The schema itself is portable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Firm {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  logoUrl      String?
+  rank         Int?
+  rating       Float? // 0..5
+  legalEntity  String?
+  hq           String?
+  ceo          String?
+  incorporated String?
+  summary      String? // short reputation blurb
+  reviewBody   String? // long-form review (markdown)
+  platforms    String // comma-separated e.g. "MT5,cTrader"
+  liquidity    String?
+  websiteUrl   String?
+  affiliateUrl String?
+  plans        Plan[]
+  coupons      Coupon[]
+  tags         Tag[]    @relation("FirmTags")
+  createdAt    DateTime @default(now())
+}
+
+model Plan {
+  id          String @id @default(cuid())
+  firm        Firm   @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firmId      String
+  challenge   String // "One-step" | "Two-step" | "Three-step" | "Instant" | "Futures"
+  minAccount  Int
+  maxAccount  Int
+  profitSplit Int? // percent
+}
+
+model Coupon {
+  id        String    @id @default(cuid())
+  firm      Firm      @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  firmId    String
+  code      String
+  percent   Int? // discount %
+  note      String? // e.g. "120% refund"
+  expiresAt DateTime?
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  slug  String @unique
+  label String
+  firms Firm[] @relation("FirmTags")
+}
