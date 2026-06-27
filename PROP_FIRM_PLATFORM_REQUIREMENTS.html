@@ -277,6 +277,25 @@
   }
   .milestone b { color: var(--paper); }
 
+  /* ---- Spec cards (Build Specs tab) ---- */
+  .item.spec { border-left: 3px solid #b08cf0; }
+  .item.spec .num { background: #b08cf0; }
+  .item.spec .cat { color: #b08cf0; border-color: #3a2a55; }
+  .item.spec ul.sub-list li:before { color: #b08cf0; }
+  .item.spec .v.violet, .tape .v.violet { color: #b08cf0; }
+  .kv { font-family: var(--mono); }
+  .kv b { color: #cbb6f2; }
+  .pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: #cbb6f2;
+    border: 1px solid #3a2a55;
+    border-radius: 6px;
+    padding: 3px 9px;
+    margin: 4px 6px 0 0;
+  }
+
   @media print {
     .tabs { display: none; }
     .tab-panel { display: block !important; }
@@ -306,6 +325,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-tab="tab-requirements">01 · Requirements</button>
     <button class="tab-btn" data-tab="tab-workflow">02 · Build Workflow</button>
+    <button class="tab-btn" data-tab="tab-specs">03 · Build Specs</button>
   </nav>
 
   <!-- ============================ TAB 1: REQUIREMENTS ============================ -->
@@ -954,6 +974,224 @@
 
   </section>
   <!-- ============================ /TAB 2 ============================ -->
+
+  <!-- ============================ TAB 3: BUILD SPECS ============================ -->
+  <section id="tab-specs" class="tab-panel">
+
+    <div class="tape">
+      <div><div class="k">Core Entities</div><div class="v violet">17</div></div>
+      <div><div class="k">Page Templates</div><div class="v">12</div></div>
+      <div><div class="k">Integrations</div><div class="v violet">8</div></div>
+      <div><div class="k">Stack</div><div class="v">Hybrid</div></div>
+    </div>
+
+    <p class="sub" style="margin-bottom:8px;">Technical specification for the application. These are the recommended defaults to walk into the P0 game-plan with — the one genuinely open decision (the platform path) is flagged below.</p>
+
+    <!-- S1 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S1</span>
+        <h2 class="item-title">Recommended Tech Stack</h2>
+        <span class="cat">Stack</span>
+      </div>
+      <p class="desc">A hybrid stack: a content/SEO layer for the review pages, and a separate application layer for the interactive, real-time, and transactional tools that a plain CMS can't do well.</p>
+      <div class="block-label">Layers</div>
+      <ul class="sub-list kv">
+        <li><b>Content / SEO layer</b> — Next.js (React + TypeScript) with SSR/SSG for the directory, reviews, comparisons, news, education.</li>
+        <li><b>Application layer</b> — Node API (NestJS or Express/Fastify) for firm portal, auctions, spreads, tracking.</li>
+        <li><b>Styling</b> — Tailwind CSS + a shared component/design system.</li>
+        <li><b>Database</b> — PostgreSQL (relational; fits firms, coupons, auctions, attribution).</li>
+        <li><b>Realtime / cache</b> — Redis + WebSockets (auction countdown, live spreads).</li>
+        <li><b>Site search</b> — Meilisearch or Algolia (fast faceted search over firms/articles).</li>
+        <li><b>Payments</b> — Stripe (penny-auction token purchases; no card data touches our servers).</li>
+        <li><b>Email / ESP</b> — Mailchimp or ConvertKit (newsletter + firm SLA notifications).</li>
+        <li><b>Forum</b> — Discourse (hosted), SSO-linked to main auth.</li>
+        <li><b>Hosting</b> — Vercel (frontend) · managed Postgres (Supabase/Neon/RDS) · Render/Railway/Fly for the Node + realtime services · Cloudflare CDN/WAF.</li>
+      </ul>
+      <div class="flag" style="border-color:#b08cf0;background:#1d152b;">
+        <span class="tag" style="color:#b08cf0;">◆ Key Decision — settle at P0</span>
+        <p style="color:#d9cdf2;"><b>Platform path.</b> Three options: <b>(A) WordPress</b> — fastest to launch, huge SEO/plugin ecosystem, likely what the competitor runs, but weak for custom real-time tools. <b>(B) Full headless</b> (the stack above) — most control, more build effort. <b>(C) Hybrid</b> — WordPress for content/SEO + a Next.js app for the tools (auctions, spreads, firm portal) sharing one firm database. Hybrid (C) is the recommendation: ship content fast, build the differentiators properly.</p>
+      </div>
+      <div class="source"><b>Spec:</b> recommended defaults · revise at game-plan</div>
+    </div>
+
+    <!-- S2 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S2</span>
+        <h2 class="item-title">System Architecture</h2>
+        <span class="cat">Architecture</span>
+      </div>
+      <p class="desc">One firm database as the source of truth, consumed by a public web tier and a set of services. Real-time features run as their own service so a spike in auction traffic never slows down the content site.</p>
+      <ul class="sub-list">
+        <li><b>Web tier</b> — server-rendered public pages + client app for logged-in firm/admin areas.</li>
+        <li><b>API gateway</b> — REST (+ WebSocket) endpoints; all writes go through validation + auth.</li>
+        <li><b>Services</b> — Spreads ingestor (scheduled), Auction engine (Redis-backed timers), Tracking/attribution, Notifications.</li>
+        <li><b>Data</b> — Postgres (primary) · Redis (cache, timers, sessions) · object storage (logos, banners, avatars).</li>
+        <li><b>Edge</b> — CDN + image optimization + caching in front of everything public.</li>
+      </ul>
+      <div class="source"><b>Spec:</b> single-source-of-truth + isolated realtime services</div>
+    </div>
+
+    <!-- S3 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S3</span>
+        <h2 class="item-title">Data Model &amp; Schema</h2>
+        <span class="cat">Database</span>
+      </div>
+      <p class="desc">The core entities (~17) that power every page and feature. Each maps back to requirement items in Tab 01.</p>
+      <div class="block-label">Core Entities</div>
+      <ul class="sub-list kv">
+        <li><b>Firm</b> — legal entity, HQ, CEO, incorporation, reputation, rating, rank, platforms, liquidity provider <span class="pill">items 03/04</span></li>
+        <li><b>Plan / Challenge</b> — type (1/2/3-step, instant, futures), account size, price, profit split, drawdown, fees → belongs to Firm</li>
+        <li><b>Coupon</b> — code, %, caps, start/end, redemption count → Firm <span class="pill">items 07/23</span></li>
+        <li><b>AffiliateLink</b> — destination, placement, click/conversion log → Firm <span class="pill">item 23</span></li>
+        <li><b>User</b> — trader account, profile, auth</li>
+        <li><b>FirmAccount</b> — firm-portal login, verification state, tier (free/featured) <span class="pill">item 01</span></li>
+        <li><b>Review</b> + <b>Comment</b> — rating, body, status, threaded replies (incl. firm replies) <span class="pill">item 11</span></li>
+        <li><b>Article</b> — news / education; type, body, author, tags, views <span class="pill">items 08/09</span></li>
+        <li><b>Auction</b> + <b>Bid</b> — prize account, status, current price, end time; bid = token spend <span class="pill">item 02</span></li>
+        <li><b>TokenWallet</b> + <b>TokenPurchase</b> — balance, Stripe purchase records <span class="pill">item 02</span></li>
+        <li><b>Raffle</b> + <b>RaffleEntry</b> — firm-supplied prize, entries, winner, fulfillment <span class="pill">item 01</span></li>
+        <li><b>Banner / AdPlacement</b> — creative, slot, schedule, impressions, clicks <span class="pill">item 14</span></li>
+        <li><b>Award</b> + <b>AwardWinner</b> — category, year, badge <span class="pill">item 10</span></li>
+        <li><b>SpreadSnapshot</b> — firm, instrument, bid/ask, timestamp <span class="pill">item 06</span></li>
+        <li><b>NewsletterSubscriber</b> — email, segment, opt-in state <span class="pill">item 13</span></li>
+        <li><b>Tag</b> — taxonomy across firms/articles <span class="pill">item 15</span></li>
+      </ul>
+      <div class="source"><b>Spec:</b> 17 entities · normalized · Firm is the hub</div>
+    </div>
+
+    <!-- S4 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S4</span>
+        <h2 class="item-title">Page Templates &amp; Routes</h2>
+        <span class="cat">Frontend</span>
+      </div>
+      <p class="desc">The URL map. ~12 templates cover the whole public site; firm-portal and admin are app sections behind auth.</p>
+      <ul class="sub-list kv">
+        <li><b>/</b> — home / "Best 10" ranked directory</li>
+        <li><b>/firms/[slug]</b> — individual firm review</li>
+        <li><b>/compare/[a]-vs-[b]</b> — head-to-head comparison</li>
+        <li><b>/offers</b> · <b>/free-challenge</b> — discounts &amp; offers hub</li>
+        <li><b>/news</b> · <b>/news/[slug]</b> — blog index + article</li>
+        <li><b>/education</b> · <b>/education/[slug]</b> — Prop School hub + lesson</li>
+        <li><b>/spreads</b> — live spreads tracker</li>
+        <li><b>/auctions</b> · <b>/auctions/[id]</b> — penny-auction list + room</li>
+        <li><b>/awards</b> · <b>/futures</b> · <b>/prospective</b> — verticals</li>
+        <li><b>/forum</b> — community (Discourse, may be a subdomain)</li>
+        <li><b>/firm-portal/*</b> — firm dashboard (auth)</li>
+        <li><b>/admin/*</b> — CMS / moderation (auth) · plus legal: /about, /contact, /privacy, /terms, /how-we-test, /advertise</li>
+      </ul>
+      <div class="source"><b>Spec:</b> 12 public templates + 2 authed app sections</div>
+    </div>
+
+    <!-- S5 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S5</span>
+        <h2 class="item-title">APIs &amp; Integrations</h2>
+        <span class="cat">Backend</span>
+      </div>
+      <p class="desc">Internal endpoints plus the eight external services the platform depends on.</p>
+      <div class="block-label">Internal APIs</div>
+      <ul class="sub-list">
+        <li><b>Affiliate redirect/track</b> — logs click + attribution, 302s to firm.</li>
+        <li><b>Coupon validate/redeem</b> — checks caps/expiry, records redemption.</li>
+        <li><b>Spreads stream</b> — ingest job writes snapshots; WebSocket broadcasts live.</li>
+        <li><b>Auction engine</b> — place-bid (token spend) + WebSocket countdown; Redis resets the timer per bid.</li>
+        <li><b>Reviews/comments</b> — submit, moderate, firm-reply.</li>
+      </ul>
+      <div class="block-label">External Integrations (8)</div>
+      <ul class="sub-list">
+        <li><b>Stripe</b> (token purchases) · <b>ESP</b> (email) · <b>Auth provider</b> (Auth0/Clerk/NextAuth) · <b>Discourse</b> (forum SSO)</li>
+        <li><b>Market-data feed</b> (spreads) · <b>Analytics</b> (GA4 + server-side) · <b>Error monitoring</b> (Sentry) · <b>CDN/WAF</b> (Cloudflare)</li>
+      </ul>
+      <div class="source"><b>Spec:</b> REST + WebSocket · 8 external integrations</div>
+    </div>
+
+    <!-- S6 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S6</span>
+        <h2 class="item-title">Auth, Roles &amp; Permissions</h2>
+        <span class="cat">Security</span>
+      </div>
+      <ul class="sub-list kv">
+        <li><b>Guest</b> — browse, read reviews, click affiliate links.</li>
+        <li><b>Trader (registered)</b> — post reviews/comments, buy tokens, bid, enter raffles, subscribe.</li>
+        <li><b>Firm — Free</b> — claim profile (verified), reply to reviews, basic dashboard.</li>
+        <li><b>Firm — Featured (paid)</b> — promos, banners, pinned raffles, full analytics.</li>
+        <li><b>Editor</b> — manage reviews, news, education, rankings.</li>
+        <li><b>Moderator</b> — comment/review moderation, dispute handling.</li>
+        <li><b>Admin</b> — full control.</li>
+      </ul>
+      <p class="desc" style="margin-top:14px;margin-bottom:0;"><b>Firm verification</b> — domain/email proof before any firm can respond or post (anti-impersonation, item 01).</p>
+      <div class="source"><b>Spec:</b> 7 roles · RBAC · verified firm onboarding</div>
+    </div>
+
+    <!-- S7 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S7</span>
+        <h2 class="item-title">SEO &amp; Performance Spec</h2>
+        <span class="cat">Growth</span>
+      </div>
+      <p class="desc">Non-negotiable for an organic-traffic business model. Built into templates, not retrofitted.</p>
+      <ul class="sub-list">
+        <li><b>Rendering</b> — SSR/SSG + ISR so every public page is crawlable and fast.</li>
+        <li><b>Structured data</b> — schema.org Review, AggregateRating, Product, BreadcrumbList, Article.</li>
+        <li><b>Discoverability</b> — auto sitemaps, canonical tags, OpenGraph/Twitter cards, clean slugs.</li>
+        <li><b>Core Web Vitals</b> — LCP &lt; 2.5s, CLS &lt; 0.1; image optimization + CDN caching.</li>
+      </ul>
+      <div class="source"><b>Spec:</b> crawlable, schema-rich, CWV-compliant</div>
+    </div>
+
+    <!-- S8 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S8</span>
+        <h2 class="item-title">Security &amp; Compliance Spec</h2>
+        <span class="cat">Compliance</span>
+      </div>
+      <ul class="sub-list">
+        <li><b>Transport &amp; app</b> — HTTPS everywhere, OWASP Top-10 hardening, input validation, rate limiting, WAF.</li>
+        <li><b>Payments</b> — PCI handled by Stripe; no card data stored on our side.</li>
+        <li><b>Privacy</b> — GDPR/CCPA cookie consent, data-deletion flow, privacy policy.</li>
+        <li><b>FTC disclosure</b> — affiliate/paid-placement disclosure baked into templates <span class="pill">flag · item 19</span></li>
+        <li><b>Auction legality</b> — structure (buy-it-now / refunds / sweepstakes framing) cleared before launch <span class="pill">flag · item 02</span></li>
+      </ul>
+      <div class="source"><b>Spec:</b> OWASP · PCI-via-Stripe · GDPR/CCPA · FTC</div>
+    </div>
+
+    <!-- S9 -->
+    <div class="item spec">
+      <div class="item-head">
+        <span class="num">S9</span>
+        <h2 class="item-title">Infrastructure, DevOps &amp; NFRs</h2>
+        <span class="cat">Operations</span>
+      </div>
+      <div class="block-label">DevOps</div>
+      <ul class="sub-list">
+        <li><b>Environments</b> — local → staging → production.</li>
+        <li><b>CI/CD</b> — automated tests + lint on every PR, deploy on merge.</li>
+        <li><b>Observability</b> — error monitoring (Sentry), uptime/perf monitoring, structured logs.</li>
+        <li><b>Resilience</b> — automated DB backups, restore drills.</li>
+      </ul>
+      <div class="block-label">Non-Functional Requirements</div>
+      <ul class="sub-list">
+        <li><b>Performance</b> — CDN + caching; sub-2.5s loads on content pages.</li>
+        <li><b>Scalability</b> — stateless web tier, Redis-backed realtime, horizontal scaling.</li>
+        <li><b>Accessibility</b> — WCAG 2.1 AA.</li>
+        <li><b>Responsive</b> — mobile-first (most prop-trading traffic is mobile).</li>
+      </ul>
+      <div class="source"><b>Spec:</b> tested, observable, scalable, accessible</div>
+    </div>
+
+  </section>
+  <!-- ============================ /TAB 3 ============================ -->
 
   <footer>
     <span>PROP FIRM REVIEW PLATFORM — MASTER REQUIREMENTS</span>
