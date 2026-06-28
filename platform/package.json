@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "snapshot": "node scripts/generate-snapshot.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
