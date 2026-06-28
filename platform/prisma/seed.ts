@@ -113,16 +113,19 @@ const FIRMS: SeedFirm[] = [
     coupon: { code: COUPON_CODE, note: "120% refund on first payout" },
   },
   {
-    // NOTE: legal entity "Five Percent Online Ltd." and HQ Ra'anana come from
-    // secondary sources, not an official imprint page. accountMax $4M is the
+    // NOTE: legalEntity and CEO are NULL. the5ers.com blocks automated access
+    // (HTTP 503 on all paths, Jun 2026) and official LinkedIn is login-walled,
+    // so neither "Five Percent Online Ltd." nor CEO "Gil Ben Hur" could be
+    // confirmed from a primary source (both secondary-only). HQ "Ra'anana,
+    // Israel" and year 2016 are likewise secondary. accountMax $4M is the
     // advertised scaling ceiling, not a single initial funded size.
     slug: "the5ers",
     name: "The5%ers",
     rank: 3,
     rating: 4.6,
-    legalEntity: "Five Percent Online Ltd.",
+    legalEntity: undefined, // NULL — not primary-confirmable; see NOTE
     hq: "Ra'anana, Israel",
-    ceo: "Gil Ben Hur",
+    ceo: undefined, // NULL — not primary-confirmable; see NOTE
     incorporated: "2016",
     summary:
       "The5%ers is an Israel-based forex proprietary trading firm (est. 2016) offering simulated evaluation programs (Hyper Growth, High Stakes, Bootcamp) that lead to funded accounts scaling up to $4 million.",
@@ -163,15 +166,19 @@ const FIRMS: SeedFirm[] = [
     // No coupon (firm does not run a forexpropreviews discount code).
   },
   {
-    // NOTE: primary registered entity/HQ is Hola Prime Limited in Hong Kong;
-    // Dubai is a secondary office (firm is often framed as "UAE-based").
+    // NOTE: Hong Kong registration CONFIRMED via primary source
+    // (holaprime.com/about-us, Jun 2026): "Hola Prime Limited, a company
+    // registered at L1, Shaw House, 201 Wan Po Road, Tseung Kwan O, Hong Kong"
+    // (Cyprus HE 454359 and a Mauritius entity are also disclosed). CEO is NULL:
+    // the About page names no CEO; "Somesh Kapuria" was secondary-only and is
+    // not primary-confirmable. incorporated "August 2024" is also secondary.
     slug: "hola-prime",
     name: "Hola Prime",
     rank: 5,
     rating: 4.5,
     legalEntity: "Hola Prime Limited",
     hq: "Hong Kong",
-    ceo: "Somesh Kapuria",
+    ceo: undefined, // NULL — not named on primary source; see NOTE
     incorporated: "August 2024",
     summary:
       "Hola Prime is a forex/CFD proprietary trading firm registered in Hong Kong (Aug 2024) offering one-step, two-step, and instant (Direct) funding across MT4/MT5, cTrader, Match-Trader and DXTrade, with funded accounts up to $300,000.",
@@ -189,21 +196,23 @@ const FIRMS: SeedFirm[] = [
     coupon: { code: COUPON_CODE, percent: 15, note: "15% off challenges" },
   },
   {
-    // NOTE: official site (e8markets.com) returns HTTP 403; data from reputable
-    // secondary sources. Post-2025 rebuild leans single-phase (E8 One); two-step
-    // (E8 Signature) still offered, three-step unconfirmed and excluded.
+    // NOTE: LOW CONFIDENCE — no primary source obtainable. e8markets.com returns
+    // HTTP 403 and official LinkedIn is login-walled (Jun 2026), so legalEntity,
+    // CEO, incorporation date and HQ are set NULL. ALL remaining E8 facts below
+    // (platforms, account sizes, challenge models) are secondary-source only and
+    // unverified — confirm directly with the firm before relying on them.
     slug: "e8-markets",
     name: "E8 Markets",
     rank: 6,
     rating: 4.4,
-    legalEntity: "E8 Funding LLC",
-    hq: "Dallas, Texas, USA",
-    ceo: "Dylan Elchami",
-    incorporated: "November 2021",
+    legalEntity: undefined, // NULL — no primary source (site 403); see NOTE
+    hq: undefined, // NULL — no primary source (site 403); see NOTE
+    ceo: undefined, // NULL — no primary source (site 403); see NOTE
+    incorporated: undefined, // NULL — no primary source (site 403); see NOTE
     summary:
-      "E8 Markets (rebranded from E8 Funding) is a US-registered proprietary trading firm headquartered in Dallas, Texas, offering one-step (E8 One) and multi-step (E8 Signature) evaluations with funded accounts up to $500,000.",
+      "E8 Markets (rebranded from E8 Funding) is a proprietary trading firm offering one-step (E8 One) and multi-step (E8 Signature) evaluations with funded accounts up to $500,000. Company-registration and leadership details could not be verified from a primary source.",
     reviewBody:
-      "## Overview\n\nE8 Markets (E8 Funding LLC, Dallas, with a Prague office) launched in November 2021 and is known for a configurable evaluation and polished trader dashboard. Platforms include MT5, cTrader, TradeLocker, and Match-Trader.\n\n## Funding & splits\n\nOne-step (E8 One) and two-step (E8 Signature) tracks run from $5,000 up to $500,000, scaling beyond $1M, with splits up to 100% on E8 One (performance-tied; standard ~80%).\n\n" + VERIFIED,
+      "## Overview\n\nE8 Markets (rebranded from E8 Funding) is known for a configurable evaluation and polished trader dashboard. Secondary sources list MT5, cTrader, TradeLocker, and Match-Trader.\n\n## Funding & splits\n\nOne-step (E8 One) and two-step (E8 Signature) tracks run from $5,000 up to $500,000, scaling beyond $1M, with splits up to 100% on E8 One (performance-tied; standard ~80%).\n\n_Note: E8's official site blocks automated access; company-registration, HQ and leadership details are unverified — confirm with the firm._",
     platforms: "MT5,cTrader,TradeLocker,Match-Trader",
     websiteUrl: "https://e8markets.com",
     affiliateUrl: "https://e8markets.com/?ref=forexpropreviews",
@@ -267,20 +276,23 @@ const FIRMS: SeedFirm[] = [
     coupon: { code: COUPON_CODE, percent: 35, note: "35% off challenges" },
   },
   {
-    // NOTE: CEO changed 2026-06-26 — Tim Plummer replaced co-founder Gary Mullen.
-    // FunderPro is tied to the Deus X Capital group (not Traders Global).
+    // NOTE: CEO is NULL. Primary check (funderpro.com/about-us, Jun 2026) still
+    // states "Gary is the Co-Founder and CEO of FunderPro" (Gary Mullen). The
+    // secondary claim that Tim Plummer took over on 2026-06-26 (FX News Group)
+    // could NOT be confirmed from any primary source, so the field is left null.
+    // legalEntity below remains secondary (terms page was unreachable / 404).
     slug: "funderpro",
     name: "FunderPro",
     rank: 9,
     rating: 4.3,
     legalEntity: "FUNDERPRO Ltd (Malta)",
     hq: "St Julian's, Malta",
-    ceo: "Tim Plummer",
+    ceo: undefined, // NULL — not primary-confirmable; see NOTE
     incorporated: "2023",
     summary:
       "FunderPro is a Malta-based forex/CFD proprietary trading firm, part of the Deus X Capital group, offering simulated-capital evaluations across one-phase, two-phase and instant funding models.",
     reviewBody:
-      "## Overview\n\nFunderPro (FUNDERPRO Ltd, Malta), part of the Deus X Capital group, launched in February 2023. It runs on MT5, cTrader, and TradeLocker and positions itself as a transparent, broker-backed option.\n\n## Funding & splits\n\nOne-phase, two-phase, and instant funding run from $5,000 up to $200,000 with profit splits up to 90% (base 80%). Tim Plummer took over as CEO in June 2026.\n\n" + VERIFIED,
+      "## Overview\n\nFunderPro (FUNDERPRO Ltd, Malta), part of the Deus X Capital group, launched in February 2023. It runs on MT5, cTrader, and TradeLocker and positions itself as a transparent, broker-backed option.\n\n## Funding & splits\n\nOne-phase, two-phase, and instant funding run from $5,000 up to $200,000 with profit splits up to 90% (base 80%).\n\n" + VERIFIED,
     platforms: "MT5,cTrader,TradeLocker",
     websiteUrl: "https://funderpro.com",
     affiliateUrl: "https://funderpro.com/?ref=forexpropreviews",
