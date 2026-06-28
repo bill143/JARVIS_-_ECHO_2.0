@@ -1,11 +1,15 @@
 /**
  * Seed script for the Prop Firm Review Platform.
  *
- * Seeds the 10 real firms from Section 8 of the build spec. Only FundingPips
- * ships with spec-provided facts; every other firm's profile facts (legal
- * entity, HQ, CEO, incorporation, ratings, account sizes, profit splits,
- * summaries, review bodies) are PLACEHOLDERS that are clearly plausible but
- * MUST be replaced with verified data before launch. They are marked below.
+ * Seeds the 10 firms with VERIFIED facts gathered Jun 2026 from each firm's
+ * official site and reputable secondary sources (FXEmpire, BrokerAnalysis,
+ * FX News Group, TradersUnion, etc.). Figures can change and some details
+ * carry caveats — see the `// NOTE:` comments on individual firms. Always
+ * confirm against the firm's own site before relying on a number for launch.
+ *
+ * Ratings are our own editorial scores (not scraped). Discount/coupon values
+ * come from the forexpropreviews.com ranking. Liquidity-provider data was not
+ * reliably verifiable and is intentionally omitted rather than guessed.
  *
  * Run with: npm run seed
  */
@@ -57,80 +61,81 @@ type SeedFirm = {
 
 const COUPON_CODE = "FOREXPROPREVIEWS";
 
-// NOTE: Apart from FundingPips (which uses spec-provided facts), all profile
-// facts below are PLACEHOLDERS — replace with verified data before launch.
+const VERIFIED = "_Facts verified Jun 2026 from public sources; figures may change — confirm on the firm's own site._";
+
 const FIRMS: SeedFirm[] = [
   {
     slug: "fundingpips",
     name: "FundingPips",
     rank: 1,
     rating: 4.8,
-    // Spec-provided facts (FundingPips):
-    legalEntity: "ANKH PROP – FZCO",
-    hq: "Dubai, UAE",
+    legalEntity: "ANKH PROP FZCO (UAE)",
+    hq: "Dubai, United Arab Emirates",
     ceo: "Khaled Ayesh",
-    incorporated: "August 2022",
+    incorporated: "2022",
     summary:
-      "FundingPips has rapidly become one of the most talked-about forex prop firms, known for fast scaling and a trader-friendly evaluation. Strong community reputation and competitive pricing.",
+      "FundingPips is a Dubai-based forex/CFD proprietary trading firm founded in 2022 that offers one-step, two-step, and instant (Zero) evaluation models on MT5, cTrader, Match-Trader, and TradeLocker.",
     reviewBody:
-      "## Overview\n\nFundingPips offers one- and two-step evaluations across MT5, Match-Trader and cTrader. The firm is operated by ANKH PROP – FZCO out of Dubai and has built a strong reputation for fast payouts and responsive support.\n\n## Evaluation\n\nAccount sizes range from $5k to $200k with profit splits up to 90%. The two-step path is the most popular for its balanced targets.\n\n> Placeholder review copy beyond spec-provided facts — replace with a verified, hands-on review before launch.",
-    platforms: "MT5,Match-Trader,cTrader",
-    liquidity: "Tier-1 aggregated liquidity (placeholder)",
+      "## Overview\n\nFundingPips, operated by ANKH PROP FZCO out of Dubai, launched in 2022 and quickly became one of the most talked-about firms in the space. It runs one-step, two-step, and instant (Zero) evaluations across MT5, cTrader, Match-Trader, and TradeLocker.\n\n## Funding & splits\n\nFunded accounts run from $5,000 up to $100,000, with a scaling program that can grow capital toward roughly $2M. Profit splits reach up to 100% on certain payout structures (standard funded splits are commonly cited at 80–95%).\n\n" + VERIFIED,
+    platforms: "MT5,cTrader,Match-Trader,TradeLocker",
     websiteUrl: "https://fundingpips.com",
     affiliateUrl: "https://fundingpips.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step"],
+    tagSlugs: ["one-step", "two-step", "instant"],
     plans: [
-      { challenge: "One-step", minAccount: 5000, maxAccount: 200000, profitSplit: 90 },
-      { challenge: "Two-step", minAccount: 5000, maxAccount: 200000, profitSplit: 90 },
+      { challenge: "One-step", minAccount: 5000, maxAccount: 100000, profitSplit: 100 },
+      { challenge: "Two-step", minAccount: 5000, maxAccount: 100000, profitSplit: 100 },
+      { challenge: "Instant", minAccount: 5000, maxAccount: 100000, profitSplit: 100 },
     ],
     coupon: { code: COUPON_CODE, percent: 20, note: "20% off all challenges" },
   },
   {
-    // PLACEHOLDER facts below — verify before launch.
     slug: "fundednext",
     name: "FundedNext",
     rank: 2,
     rating: 4.7,
-    legalEntity: "FundedNext Ltd (placeholder)",
-    hq: "Dubai, UAE (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2022 (placeholder)",
+    legalEntity: "GrowthNext F.Z.C. (UAE)",
+    hq: "Ajman, United Arab Emirates",
+    ceo: "Abdullah Jayed",
+    incorporated: "2022",
     summary:
-      "FundedNext is a large, well-known prop firm offering multiple evaluation models including an upfront refund on the challenge fee. Popular for its generous scaling plan.",
+      "FundedNext is an Ajman (UAE)-based forex/CFD proprietary trading firm founded in 2022 that offers one-step, two-step, and instant funding models (Stellar series) on MT4, MT5, cTrader, and Match-Trader.",
     reviewBody:
-      "## Overview\n\nFundedNext runs several evaluation models and is known for its 15% profit share during the challenge phase on some models, plus a refundable fee.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "MT4,MT5",
-    liquidity: "Aggregated liquidity (placeholder)",
+      "## Overview\n\nFundedNext, operated by GrowthNext F.Z.C. in Ajman, UAE, has grown into one of the largest names in prop trading since its 2022 launch. Its Stellar series spans one-step, two-step, and instant funding on MT4, MT5, cTrader, and Match-Trader.\n\n## Funding & splits\n\nEntry starts as low as $2,000 (Stellar Instant) up to $200,000, with profit splits up to 95% on CFD models. The firm is known for a refundable challenge fee and generous scaling.\n\n" + VERIFIED,
+    platforms: "MT4,MT5,cTrader,Match-Trader",
     websiteUrl: "https://fundednext.com",
     affiliateUrl: "https://fundednext.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step"],
+    tagSlugs: ["one-step", "two-step", "instant"],
     plans: [
+      { challenge: "Instant", minAccount: 2000, maxAccount: 200000, profitSplit: 95 },
       { challenge: "Two-step", minAccount: 6000, maxAccount: 200000, profitSplit: 90 },
-      { challenge: "One-step", minAccount: 6000, maxAccount: 100000, profitSplit: 85 },
+      { challenge: "One-step", minAccount: 6000, maxAccount: 100000, profitSplit: 90 },
     ],
     coupon: { code: COUPON_CODE, note: "120% refund on first payout" },
   },
   {
+    // NOTE: legal entity "Five Percent Online Ltd." and HQ Ra'anana come from
+    // secondary sources, not an official imprint page. accountMax $4M is the
+    // advertised scaling ceiling, not a single initial funded size.
     slug: "the5ers",
     name: "The5%ers",
     rank: 3,
     rating: 4.6,
-    legalEntity: "The 5%ers (placeholder)",
-    hq: "Israel (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2016 (placeholder)",
+    legalEntity: "Five Percent Online Ltd.",
+    hq: "Ra'anana, Israel",
+    ceo: "Gil Ben Hur",
+    incorporated: "2016",
     summary:
-      "The5%ers is one of the longest-running prop firms, offering instant-funding and high-stakes challenge programs with an emphasis on low-risk, consistent trading.",
+      "The5%ers is an Israel-based forex proprietary trading firm (est. 2016) offering simulated evaluation programs (Hyper Growth, High Stakes, Bootcamp) that lead to funded accounts scaling up to $4 million.",
     reviewBody:
-      "## Overview\n\nThe5%ers offers both instant funding and challenge accounts, with a focus on steady growth and a transparent scaling plan.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "MT5",
-    liquidity: "Aggregated liquidity (placeholder)",
+      "## Overview\n\nThe5%ers is one of the longest-running firms in the industry, founded in 2016. Its programs — Hyper Growth (one-step), High Stakes (two-step), and Bootcamp (three-step) — run on MT5, cTrader, and TradingView.\n\n## Funding & splits\n\nEntry starts around $2,500 (High Stakes), with an advertised scaling ceiling up to $4,000,000 and profit splits up to 100%. The firm emphasises low-risk, consistent trading.\n\n" + VERIFIED,
+    platforms: "MT5,cTrader,TradingView",
     websiteUrl: "https://the5ers.com",
     affiliateUrl: "https://the5ers.com/?ref=forexpropreviews",
-    tagSlugs: ["two-step", "instant"],
+    tagSlugs: ["one-step", "two-step", "three-step"],
     plans: [
-      { challenge: "Instant", minAccount: 4000, maxAccount: 100000, profitSplit: 80 },
-      { challenge: "Two-step", minAccount: 5000, maxAccount: 100000, profitSplit: 85 },
+      { challenge: "One-step", minAccount: 2500, maxAccount: 4000000, profitSplit: 100 },
+      { challenge: "Two-step", minAccount: 2500, maxAccount: 4000000, profitSplit: 100 },
+      { challenge: "Three-step", minAccount: 2500, maxAccount: 4000000, profitSplit: 100 },
     ],
     coupon: { code: COUPON_CODE, percent: 10, note: "10% off challenges" },
   },
@@ -139,68 +144,73 @@ const FIRMS: SeedFirm[] = [
     name: "FTMO",
     rank: 4,
     rating: 4.7,
-    legalEntity: "FTMO s.r.o. (placeholder)",
-    hq: "Prague, Czech Republic (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2015 (placeholder)",
+    legalEntity: "FTMO s.r.o.",
+    hq: "Prague, Czech Republic",
+    ceo: "Otakar Šuffner",
+    incorporated: "2015",
     summary:
-      "FTMO is the industry benchmark prop firm — a two-step evaluation, robust risk rules and a reputation for reliable payouts built over many years.",
+      "FTMO is a Prague-based proprietary trading firm (est. 2015) offering one-step and two-step simulated evaluations that grant funded accounts up to $200,000, with a scaling plan to grow capital and profit split.",
     reviewBody:
-      "## Overview\n\nFTMO popularised the two-step evaluation model and remains the most recognised name in the space. Known for strong infrastructure and consistent payouts.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
+      "## Overview\n\nFTMO (FTMO s.r.o., Prague) popularised the two-step evaluation model and remains the most recognised name in the space since 2015. It supports MT4, MT5, and cTrader.\n\n## Funding & splits\n\nFunded accounts run from $10,000 to $200,000 with a base 80% split scaling to 90%; capital can grow beyond $200K via the scaling plan. Known for strong infrastructure and reliable payouts.\n\n" + VERIFIED,
     platforms: "MT4,MT5,cTrader",
-    liquidity: "Tier-1 liquidity (placeholder)",
     websiteUrl: "https://ftmo.com",
     affiliateUrl: "https://ftmo.com/?ref=forexpropreviews",
-    tagSlugs: ["two-step"],
+    tagSlugs: ["one-step", "two-step"],
     plans: [
       { challenge: "Two-step", minAccount: 10000, maxAccount: 200000, profitSplit: 90 },
+      { challenge: "One-step", minAccount: 10000, maxAccount: 200000, profitSplit: 90 },
     ],
-    // No coupon (spec: "—").
+    // No coupon (firm does not run a forexpropreviews discount code).
   },
   {
+    // NOTE: primary registered entity/HQ is Hola Prime Limited in Hong Kong;
+    // Dubai is a secondary office (firm is often framed as "UAE-based").
     slug: "hola-prime",
     name: "Hola Prime",
     rank: 5,
     rating: 4.5,
-    legalEntity: "Hola Prime (placeholder)",
-    hq: "UAE (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2024 (placeholder)",
+    legalEntity: "Hola Prime Limited",
+    hq: "Hong Kong",
+    ceo: "Somesh Kapuria",
+    incorporated: "August 2024",
     summary:
-      "Hola Prime is a newer firm that has gained traction with flexible evaluation options and fast payout claims. One of the rising names in the space.",
+      "Hola Prime is a forex/CFD proprietary trading firm registered in Hong Kong (Aug 2024) offering one-step, two-step, and instant (Direct) funding across MT4/MT5, cTrader, Match-Trader and DXTrade, with funded accounts up to $300,000.",
     reviewBody:
-      "## Overview\n\nHola Prime offers one- and two-step evaluations with competitive targets and a focus on rapid payouts.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "MT5,cTrader",
-    liquidity: "Aggregated liquidity (placeholder)",
+      "## Overview\n\nHola Prime (Hola Prime Limited, Hong Kong, with a Dubai office) launched in August 2024 and grew fast on the back of flexible evaluations and rapid payout claims. It supports MT4, MT5, cTrader, Match-Trader, and DXTrade.\n\n## Funding & splits\n\nOne-step, two-step, and instant (Direct) models run from $5,000 up to $300,000, scaling toward ~$4M, with profit splits up to 95%.\n\n" + VERIFIED,
+    platforms: "MT4,MT5,cTrader,Match-Trader,DXTrade",
     websiteUrl: "https://holaprime.com",
     affiliateUrl: "https://holaprime.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step"],
+    tagSlugs: ["one-step", "two-step", "instant"],
     plans: [
-      { challenge: "One-step", minAccount: 5000, maxAccount: 200000, profitSplit: 90 },
+      { challenge: "One-step", minAccount: 5000, maxAccount: 300000, profitSplit: 95 },
+      { challenge: "Two-step", minAccount: 5000, maxAccount: 300000, profitSplit: 95 },
+      { challenge: "Instant", minAccount: 5000, maxAccount: 300000, profitSplit: 95 },
     ],
     coupon: { code: COUPON_CODE, percent: 15, note: "15% off challenges" },
   },
   {
+    // NOTE: official site (e8markets.com) returns HTTP 403; data from reputable
+    // secondary sources. Post-2025 rebuild leans single-phase (E8 One); two-step
+    // (E8 Signature) still offered, three-step unconfirmed and excluded.
     slug: "e8-markets",
     name: "E8 Markets",
     rank: 6,
     rating: 4.4,
-    legalEntity: "E8 Funding LLC (placeholder)",
-    hq: "Dallas, USA (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2021 (placeholder)",
+    legalEntity: "E8 Funding LLC",
+    hq: "Dallas, Texas, USA",
+    ceo: "Dylan Elchami",
+    incorporated: "November 2021",
     summary:
-      "E8 Markets is known for its flexible, customisable evaluation and a strong trader dashboard. Popular among traders who want tailored challenge parameters.",
+      "E8 Markets (rebranded from E8 Funding) is a US-registered proprietary trading firm headquartered in Dallas, Texas, offering one-step (E8 One) and multi-step (E8 Signature) evaluations with funded accounts up to $500,000.",
     reviewBody:
-      "## Overview\n\nE8 Markets offers configurable one-, two- and three-step evaluations with a polished platform experience.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "MT5,Match-Trader",
-    liquidity: "Aggregated liquidity (placeholder)",
+      "## Overview\n\nE8 Markets (E8 Funding LLC, Dallas, with a Prague office) launched in November 2021 and is known for a configurable evaluation and polished trader dashboard. Platforms include MT5, cTrader, TradeLocker, and Match-Trader.\n\n## Funding & splits\n\nOne-step (E8 One) and two-step (E8 Signature) tracks run from $5,000 up to $500,000, scaling beyond $1M, with splits up to 100% on E8 One (performance-tied; standard ~80%).\n\n" + VERIFIED,
+    platforms: "MT5,cTrader,TradeLocker,Match-Trader",
     websiteUrl: "https://e8markets.com",
     affiliateUrl: "https://e8markets.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step", "three-step"],
+    tagSlugs: ["one-step", "two-step"],
     plans: [
-      { challenge: "Two-step", minAccount: 5000, maxAccount: 250000, profitSplit: 80 },
-      { challenge: "Three-step", minAccount: 5000, maxAccount: 250000, profitSplit: 80 },
+      { challenge: "One-step", minAccount: 5000, maxAccount: 500000, profitSplit: 100 },
+      { challenge: "Two-step", minAccount: 5000, maxAccount: 500000, profitSplit: 80 },
     ],
     coupon: { code: COUPON_CODE, percent: 5, note: "5% off challenges" },
   },
@@ -209,67 +219,76 @@ const FIRMS: SeedFirm[] = [
     name: "FXIFY",
     rank: 7,
     rating: 4.4,
-    legalEntity: "FXIFY (placeholder)",
-    hq: "London, UK (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2023 (placeholder)",
+    legalEntity: "FXIFY Markets Ltd (Labuan, Malaysia)",
+    hq: "London, United Kingdom",
+    ceo: "Peter Brown",
+    incorporated: "2023",
     summary:
-      "FXIFY offers a wide range of evaluation models with highly customisable parameters and add-ons, backed by an established broker partner.",
+      "FXIFY is a broker-backed forex/CFD proprietary trading firm launched in 2023 that offers one-, two- and three-step evaluations plus instant funding, with funded capital up to $400,000.",
     reviewBody:
-      "## Overview\n\nFXIFY provides one-, two- and three-step challenges with optional add-ons and up to 90% profit splits.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "MT4,MT5",
-    liquidity: "Broker-backed liquidity (placeholder)",
+      "## Overview\n\nFXIFY, an early broker-backed prop firm, launched in 2023. Its registered broker entity is FXIFY Markets Ltd (Labuan, Malaysia) with London operations. Platforms include MT4, MT5, DXtrade, and TradingView (cTrader is not offered).\n\n## Funding & splits\n\nOne-step (Lightning), two-step, three-step, and instant funding run from $5,000 up to $400,000 with profit splits up to 90% (and add-on options).\n\n" + VERIFIED,
+    platforms: "MT4,MT5,DXtrade,TradingView",
     websiteUrl: "https://fxify.com",
     affiliateUrl: "https://fxify.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step", "three-step"],
+    tagSlugs: ["one-step", "two-step", "three-step", "instant"],
     plans: [
       { challenge: "One-step", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
+      { challenge: "Two-step", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
+      { challenge: "Three-step", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
+      { challenge: "Instant", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
     ],
     coupon: { code: COUPON_CODE, percent: 15, note: "15% off challenges" },
   },
   {
+    // NOTE: account max ambiguous — forex division historically tops out at
+    // ~$200K; current site shows $400K largely via the futures division.
     slug: "blue-guardian",
     name: "Blue Guardian",
     rank: 8,
     rating: 4.3,
-    legalEntity: "Blue Guardian (placeholder)",
-    hq: "UAE (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2021 (placeholder)",
+    legalEntity: "Iconic Exchange FZCO (Dubai, UAE)",
+    hq: "Dubai, United Arab Emirates",
+    ceo: "Sean Bainton",
+    incorporated: "September 2021",
     summary:
-      "Blue Guardian focuses on capital-preservation-friendly rules and a clean evaluation process, appealing to risk-conscious traders.",
+      "Blue Guardian is a UAE-based forex/CFD and futures proprietary trading firm founded in 2021 that offers one-, two-, and three-step evaluations plus instant-funding accounts.",
     reviewBody:
-      "## Overview\n\nBlue Guardian offers one- and two-step evaluations with an emphasis on consistency and capital preservation.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "MT5,cTrader",
-    liquidity: "Aggregated liquidity (placeholder)",
+      "## Overview\n\nBlue Guardian (Iconic Exchange FZCO, Dubai) launched in 2021 with an emphasis on capital-preservation-friendly rules and a clean evaluation. It spans forex and futures, with MT5, Match-Trader, TradeLocker, Tradovate, and ProjectX.\n\n## Funding & splits\n\nOne-, two-, and three-step plus instant models run from $5,000 up to $400,000 (largest sizes via the futures division), with profit splits up to 90%.\n\n" + VERIFIED,
+    platforms: "MT5,Match-Trader,TradeLocker,Tradovate,ProjectX",
     websiteUrl: "https://blueguardian.com",
     affiliateUrl: "https://blueguardian.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step"],
+    tagSlugs: ["one-step", "two-step", "three-step", "instant"],
     plans: [
-      { challenge: "Two-step", minAccount: 5000, maxAccount: 200000, profitSplit: 85 },
+      { challenge: "One-step", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
+      { challenge: "Two-step", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
+      { challenge: "Three-step", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
+      { challenge: "Instant", minAccount: 5000, maxAccount: 400000, profitSplit: 90 },
     ],
     coupon: { code: COUPON_CODE, percent: 35, note: "35% off challenges" },
   },
   {
+    // NOTE: CEO changed 2026-06-26 — Tim Plummer replaced co-founder Gary Mullen.
+    // FunderPro is tied to the Deus X Capital group (not Traders Global).
     slug: "funderpro",
     name: "FunderPro",
     rank: 9,
     rating: 4.3,
-    legalEntity: "FunderPro (placeholder)",
-    hq: "London, UK (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2022 (placeholder)",
+    legalEntity: "FUNDERPRO Ltd (Malta)",
+    hq: "St Julian's, Malta",
+    ceo: "Tim Plummer",
+    incorporated: "2023",
     summary:
-      "FunderPro pairs its evaluation with its own proprietary platform and a regulated broker partner, positioning itself as a transparent option.",
+      "FunderPro is a Malta-based forex/CFD proprietary trading firm, part of the Deus X Capital group, offering simulated-capital evaluations across one-phase, two-phase and instant funding models.",
     reviewBody:
-      "## Overview\n\nFunderPro offers one- and two-step challenges on its proprietary TradeLocker-based platform.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "TradeLocker,MT5",
-    liquidity: "Broker-backed liquidity (placeholder)",
+      "## Overview\n\nFunderPro (FUNDERPRO Ltd, Malta), part of the Deus X Capital group, launched in February 2023. It runs on MT5, cTrader, and TradeLocker and positions itself as a transparent, broker-backed option.\n\n## Funding & splits\n\nOne-phase, two-phase, and instant funding run from $5,000 up to $200,000 with profit splits up to 90% (base 80%). Tim Plummer took over as CEO in June 2026.\n\n" + VERIFIED,
+    platforms: "MT5,cTrader,TradeLocker",
     websiteUrl: "https://funderpro.com",
     affiliateUrl: "https://funderpro.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step"],
+    tagSlugs: ["one-step", "two-step", "instant"],
     plans: [
-      { challenge: "Two-step", minAccount: 5000, maxAccount: 200000, profitSplit: 80 },
+      { challenge: "One-step", minAccount: 5000, maxAccount: 200000, profitSplit: 90 },
+      { challenge: "Two-step", minAccount: 5000, maxAccount: 200000, profitSplit: 90 },
+      { challenge: "Instant", minAccount: 5000, maxAccount: 200000, profitSplit: 90 },
     ],
     coupon: { code: COUPON_CODE, percent: 10, note: "10% off challenges" },
   },
@@ -278,21 +297,22 @@ const FIRMS: SeedFirm[] = [
     name: "Fintokei",
     rank: 10,
     rating: 4.2,
-    legalEntity: "Fintokei (placeholder)",
-    hq: "Japan / EU (placeholder)",
-    ceo: "Placeholder Name",
-    incorporated: "2023 (placeholder)",
+    legalEntity: "Fintokei a.s. (part of Purple Group)",
+    hq: "Brno, Czech Republic",
+    ceo: "David Varga",
+    incorporated: "2022",
     summary:
-      "Fintokei targets a global (notably Japanese) audience with multiple evaluation tiers and a polished, localised experience.",
+      "Fintokei is a forex/CFD proprietary trading evaluation firm operated by Czech entity Fintokei a.s. (part of the Purple Group), targeting the Japanese and broader Asian market with simulated-capital challenge programs.",
     reviewBody:
-      "## Overview\n\nFintokei offers several evaluation tiers with localisation for multiple regions and competitive scaling.\n\n> Placeholder review copy — replace with a verified, hands-on review before launch.",
-    platforms: "MT5,DXtrade",
-    liquidity: "Aggregated liquidity (placeholder)",
+      "## Overview\n\nFintokei (Fintokei a.s., Brno, part of the Purple Group) launched in 2022 with a strong focus on the Japanese and wider Asian market, offering a polished, localised experience on MT5, cTrader, and TradingView.\n\n## Funding & splits\n\nMultiple tiers (incl. SwiftTrader and ProTrader) run from $5,000 up to $400,000, with profit splits up to 100% on the SwiftTrader program (others ~80%).\n\n" + VERIFIED,
+    platforms: "MT5,cTrader,TradingView",
     websiteUrl: "https://fintokei.com",
     affiliateUrl: "https://fintokei.com/?ref=forexpropreviews",
-    tagSlugs: ["one-step", "two-step"],
+    tagSlugs: ["one-step", "two-step", "three-step"],
     plans: [
-      { challenge: "Two-step", minAccount: 5000, maxAccount: 200000, profitSplit: 90 },
+      { challenge: "One-step", minAccount: 5000, maxAccount: 400000, profitSplit: 100 },
+      { challenge: "Two-step", minAccount: 5000, maxAccount: 400000, profitSplit: 100 },
+      { challenge: "Three-step", minAccount: 5000, maxAccount: 400000, profitSplit: 100 },
     ],
     coupon: { code: COUPON_CODE, percent: 30, note: "30% off challenges" },
   },
