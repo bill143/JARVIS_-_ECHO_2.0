@@ -69,10 +69,33 @@ export default function HowWeTestPage() {
         ))}
       </ol>
 
-      <p className="mt-6 max-w-2xl text-sm text-muted">
-        Ratings are reviewed periodically and updated when a firm&apos;s terms,
-        pricing, or reliability change. {/* TODO: link to scoring rubric. */}
-      </p>
+      <div className="mt-8 rounded-lg border border-panel-edge bg-panel p-5">
+        <h2 className="font-semibold text-text">How the score is calculated</h2>
+        <p className="mt-2 max-w-2xl text-sm text-muted">
+          We do not invent ratings. Until our verified user-review system is
+          live, each firm&apos;s score is a{" "}
+          <strong className="text-text">
+            transparent algorithmic composite
+          </strong>{" "}
+          of the verified hard attributes we hold for every firm — not opinion,
+          and not user reviews:
+        </p>
+        <ul className="mt-3 max-w-2xl space-y-1.5 text-sm text-muted">
+          <li>• Highest reward (profit) split — 30%</li>
+          <li>• Current discount / value — 25%</li>
+          <li>• Funded-capital scaling ceiling — 15%</li>
+          <li>• Number of supported platforms — 15%</li>
+          <li>• Range of challenge models offered — 15%</li>
+        </ul>
+        <p className="mt-3 max-w-2xl text-sm text-muted">
+          Each factor is normalised across all firms and weighted as above. The
+          six criteria listed earlier describe what we assess as real
+          payout-proof and user-review data is gathered — at which point scores
+          move from this provisional composite to verified, multi-criteria
+          ratings. Scores update whenever a firm&apos;s verified terms or
+          pricing change.
+        </p>
+      </div>
     </div>
   );
 }
