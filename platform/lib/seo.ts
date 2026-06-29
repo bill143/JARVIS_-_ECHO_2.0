@@ -6,7 +6,16 @@ export const SITE_DESCRIPTION =
   "Independent reviews and comparisons of the best forex proprietary trading firms — ratings, challenge types, platforms, and current discounts.";
 
 export function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  // 1) explicit override (custom domain). 2) Vercel's production domain, set
+  // automatically on every Vercel build so sitemap/robots/canonical use the
+  // real URL with NO manual env config. 3) per-deployment URL. 4) local dev.
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
+  if (explicit) return explicit.replace(/\/$/, "");
+  const prod = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (prod) return `https://${prod}`;
+  const deployment = process.env.VERCEL_URL;
+  if (deployment) return `https://${deployment}`;
+  return "http://localhost:3000";
 }
 
 export function absoluteUrl(path: string): string {
