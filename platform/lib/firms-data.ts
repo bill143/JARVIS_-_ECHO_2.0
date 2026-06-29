@@ -1,13 +1,13 @@
 // AUTO-GENERATED static data snapshot of the verified firm dataset.
 // Source of truth for the deployed (read-only) site — no database needed at
-// runtime. Regenerate from the Prisma DB via: npm run snapshot
-// (see scripts/generate-snapshot.mjs). Do not hand-edit.
+// runtime. Regenerate via: npm run snapshot (see scripts/generate-snapshot.mjs).
+// Do not hand-edit.
 
 import type { FirmDTO } from "@/lib/types";
 
 export const FIRMS_DATA: FirmDTO[] = [
   {
-    "id": "cmqxg7dio0004z4otn73nv7vl",
+    "id": "cmqyqtx190004kbnv60bfui4m",
     "slug": "fundingpips",
     "name": "FundingPips",
     "logoUrl": null,
@@ -29,21 +29,21 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://fundingpips.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7dip0005z4otjqp12et6",
+        "id": "cmqyqtx1a0005kbnvgd7zpjad",
         "challenge": "One-step",
         "minAccount": 5000,
         "maxAccount": 100000,
         "profitSplit": 100
       },
       {
-        "id": "cmqxg7dip0006z4otofrjhxre",
+        "id": "cmqyqtx1a0006kbnvxloxhmsm",
         "challenge": "Two-step",
         "minAccount": 5000,
         "maxAccount": 100000,
         "profitSplit": 100
       },
       {
-        "id": "cmqxg7dip0007z4ot64bpptvj",
+        "id": "cmqyqtx1a0007kbnv1wb2o623",
         "challenge": "Instant",
         "minAccount": 5000,
         "maxAccount": 100000,
@@ -52,7 +52,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7dip0008z4otbpivo6g3",
+        "id": "cmqyqtx1a0008kbnvgtpqzpl7",
         "code": "FOREXPROPREVIEWS",
         "percent": 20,
         "note": "20% off all challenges",
@@ -61,17 +61,17 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dik0003z4ot3uicyypz",
+        "id": "cmqyqtx120003kbnvemcdobhs",
         "slug": "instant",
         "label": "Instant"
       }
@@ -81,7 +81,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 100000
   },
   {
-    "id": "cmqxg7diy0009z4otbgz4ltph",
+    "id": "cmqyqtx1l0009kbnvbd68e76m",
     "slug": "fundednext",
     "name": "FundedNext",
     "logoUrl": null,
@@ -104,21 +104,21 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://fundednext.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7diy000az4ottja9y6ju",
+        "id": "cmqyqtx1l000akbnvgszyit79",
         "challenge": "Instant",
         "minAccount": 2000,
         "maxAccount": 200000,
         "profitSplit": 95
       },
       {
-        "id": "cmqxg7diy000bz4ottum0i71s",
+        "id": "cmqyqtx1l000bkbnvm5aqasyw",
         "challenge": "Two-step",
         "minAccount": 6000,
         "maxAccount": 200000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7diy000cz4otom4bi1aa",
+        "id": "cmqyqtx1l000ckbnveirwp2p6",
         "challenge": "One-step",
         "minAccount": 6000,
         "maxAccount": 100000,
@@ -127,7 +127,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7diy000dz4otuyhyy2p8",
+        "id": "cmqyqtx1l000dkbnv9mnvzc33",
         "code": "FOREXPROPREVIEWS",
         "percent": null,
         "note": "120% refund on first payout",
@@ -136,17 +136,17 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dik0003z4ot3uicyypz",
+        "id": "cmqyqtx120003kbnvemcdobhs",
         "slug": "instant",
         "label": "Instant"
       }
@@ -156,7 +156,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 200000
   },
   {
-    "id": "cmqxg7dj2000ez4ott4xdf3f3",
+    "id": "cmqyqtx1t000ekbnv3giq9brp",
     "slug": "the5ers",
     "name": "The5%ers",
     "logoUrl": null,
@@ -177,21 +177,21 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://the5ers.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7dj2000fz4otxhrd7son",
+        "id": "cmqyqtx1t000fkbnvoa1gjlev",
         "challenge": "One-step",
         "minAccount": 2500,
         "maxAccount": 4000000,
         "profitSplit": 100
       },
       {
-        "id": "cmqxg7dj2000gz4otidfkdjg0",
+        "id": "cmqyqtx1t000gkbnv5t9x6ebe",
         "challenge": "Two-step",
         "minAccount": 2500,
         "maxAccount": 4000000,
         "profitSplit": 100
       },
       {
-        "id": "cmqxg7dj2000hz4ot6cdfvui0",
+        "id": "cmqyqtx1t000hkbnvfdxt6vwb",
         "challenge": "Three-step",
         "minAccount": 2500,
         "maxAccount": 4000000,
@@ -200,7 +200,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7dj2000iz4ot7nvsuzhd",
+        "id": "cmqyqtx1t000ikbnvvadqtm26",
         "code": "FOREXPROPREVIEWS",
         "percent": 10,
         "note": "10% off challenges",
@@ -209,17 +209,17 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dig0002z4otgdvmfc77",
+        "id": "cmqyqtx0w0002kbnv54ju3ysr",
         "slug": "three-step",
         "label": "Three-step"
       }
@@ -229,7 +229,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 4000000
   },
   {
-    "id": "cmqxg7dj8000jz4otz878a0km",
+    "id": "cmqyqtx20000jkbnvtm3toh87",
     "slug": "ftmo",
     "name": "FTMO",
     "logoUrl": null,
@@ -251,14 +251,14 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://ftmo.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7dj8000kz4otg8kn495k",
+        "id": "cmqyqtx20000kkbnvixv0xr71",
         "challenge": "Two-step",
         "minAccount": 10000,
         "maxAccount": 200000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7dj8000lz4otv5rqxpef",
+        "id": "cmqyqtx20000lkbnv2g3qycog",
         "challenge": "One-step",
         "minAccount": 10000,
         "maxAccount": 200000,
@@ -268,12 +268,12 @@ export const FIRMS_DATA: FirmDTO[] = [
     "coupons": [],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       }
@@ -283,7 +283,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 200000
   },
   {
-    "id": "cmqxg7djd000mz4ot2jcbtemf",
+    "id": "cmqyqtx27000mkbnvymxz75rz",
     "slug": "fxify",
     "name": "FXIFY",
     "logoUrl": null,
@@ -306,28 +306,28 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://fxify.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7djd000nz4otholild1y",
+        "id": "cmqyqtx28000nkbnvdw8cp9n4",
         "challenge": "One-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7djd000oz4otch7clpzn",
+        "id": "cmqyqtx28000okbnv8igq30ui",
         "challenge": "Two-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7djd000pz4otdi5lby91",
+        "id": "cmqyqtx28000pkbnv8c4gb8rw",
         "challenge": "Three-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7djd000qz4otd1soi5yu",
+        "id": "cmqyqtx28000qkbnvw83grcni",
         "challenge": "Instant",
         "minAccount": 5000,
         "maxAccount": 400000,
@@ -336,7 +336,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7djd000rz4ot872lnfa3",
+        "id": "cmqyqtx28000rkbnvr2wrv8d2",
         "code": "FOREXPROPREVIEWS",
         "percent": 15,
         "note": "15% off challenges",
@@ -345,22 +345,22 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dig0002z4otgdvmfc77",
+        "id": "cmqyqtx0w0002kbnv54ju3ysr",
         "slug": "three-step",
         "label": "Three-step"
       },
       {
-        "id": "cmqxg7dik0003z4ot3uicyypz",
+        "id": "cmqyqtx120003kbnvemcdobhs",
         "slug": "instant",
         "label": "Instant"
       }
@@ -370,7 +370,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 400000
   },
   {
-    "id": "cmqxg7dji000sz4otr9mwufgm",
+    "id": "cmqyqtx2g000skbnvtg8i8vby",
     "slug": "e8-markets",
     "name": "E8 Markets",
     "logoUrl": null,
@@ -393,14 +393,14 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://e8markets.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7dji000tz4otoli55sqo",
+        "id": "cmqyqtx2g000tkbnv4kdktgj9",
         "challenge": "One-step",
         "minAccount": 5000,
         "maxAccount": 500000,
         "profitSplit": 100
       },
       {
-        "id": "cmqxg7dji000uz4oty5i11set",
+        "id": "cmqyqtx2g000ukbnvgvsmmt0y",
         "challenge": "Two-step",
         "minAccount": 5000,
         "maxAccount": 500000,
@@ -409,7 +409,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7dji000vz4otcvmof8e7",
+        "id": "cmqyqtx2g000vkbnvb9mrx8ci",
         "code": "FOREXPROPREVIEWS",
         "percent": 5,
         "note": "5% off challenges",
@@ -418,12 +418,12 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       }
@@ -433,7 +433,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 500000
   },
   {
-    "id": "cmqxg7djn000wz4otq4tt7cet",
+    "id": "cmqyqtx2n000wkbnvwltrp8lw",
     "slug": "blue-guardian",
     "name": "Blue Guardian",
     "logoUrl": null,
@@ -457,28 +457,28 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://blueguardian.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7djn000xz4ot0zut5lzb",
+        "id": "cmqyqtx2n000xkbnv85vb7u9z",
         "challenge": "One-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7djn000yz4ottwu67nxn",
+        "id": "cmqyqtx2n000ykbnvv3h4xub1",
         "challenge": "Two-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7djn000zz4otag5y2ag7",
+        "id": "cmqyqtx2n000zkbnvu5w92k9m",
         "challenge": "Three-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7djn0010z4otbgdqaffs",
+        "id": "cmqyqtx2n0010kbnv1heeb54z",
         "challenge": "Instant",
         "minAccount": 5000,
         "maxAccount": 400000,
@@ -487,7 +487,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7djn0011z4otpq3sajpb",
+        "id": "cmqyqtx2n0011kbnvpe6q1a7f",
         "code": "FOREXPROPREVIEWS",
         "percent": 35,
         "note": "35% off challenges",
@@ -496,22 +496,22 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dig0002z4otgdvmfc77",
+        "id": "cmqyqtx0w0002kbnv54ju3ysr",
         "slug": "three-step",
         "label": "Three-step"
       },
       {
-        "id": "cmqxg7dik0003z4ot3uicyypz",
+        "id": "cmqyqtx120003kbnvemcdobhs",
         "slug": "instant",
         "label": "Instant"
       }
@@ -521,7 +521,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 400000
   },
   {
-    "id": "cmqxg7djs0012z4otej4rvkw3",
+    "id": "cmqyqtx2u0012kbnv45qxbk15",
     "slug": "fintokei",
     "name": "Fintokei",
     "logoUrl": null,
@@ -543,21 +543,21 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://fintokei.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7djs0013z4ot805fg3py",
+        "id": "cmqyqtx2u0013kbnv1s7oewit",
         "challenge": "One-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 100
       },
       {
-        "id": "cmqxg7djs0014z4otl6vk89f2",
+        "id": "cmqyqtx2u0014kbnvle2q2e4r",
         "challenge": "Two-step",
         "minAccount": 5000,
         "maxAccount": 400000,
         "profitSplit": 100
       },
       {
-        "id": "cmqxg7djs0015z4otcwkt5rva",
+        "id": "cmqyqtx2u0015kbnvrkgbjacn",
         "challenge": "Three-step",
         "minAccount": 5000,
         "maxAccount": 400000,
@@ -566,7 +566,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7djs0016z4otoi81x3el",
+        "id": "cmqyqtx2u0016kbnv349jqd3t",
         "code": "FOREXPROPREVIEWS",
         "percent": 30,
         "note": "30% off challenges",
@@ -575,17 +575,17 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dig0002z4otgdvmfc77",
+        "id": "cmqyqtx0w0002kbnv54ju3ysr",
         "slug": "three-step",
         "label": "Three-step"
       }
@@ -595,7 +595,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 400000
   },
   {
-    "id": "cmqxg7djw0017z4ot060cq4kx",
+    "id": "cmqyqtx310017kbnvfr7wc7tu",
     "slug": "hola-prime",
     "name": "Hola Prime",
     "logoUrl": null,
@@ -605,35 +605,35 @@ export const FIRMS_DATA: FirmDTO[] = [
     "hq": "Hong Kong",
     "ceo": null,
     "incorporated": null,
-    "summary": "Hola Prime is a forex/CFD proprietary trading firm registered in Hong Kong (Hola Prime Limited) offering one-step, two-step, and instant (Direct) funding across MT4/MT5, cTrader, Match-Trader and DXTrade, with funded accounts up to $300,000.",
-    "reviewBody": "## Overview\n\nHola Prime (Hola Prime Limited, Hong Kong, with a Dubai office) grew fast on the back of flexible evaluations and rapid payout claims. It supports MT4, MT5, cTrader, Match-Trader, and DXTrade.\n\n## Funding & splits\n\nOne-step, two-step, and instant (Direct) models run from $5,000 up to $300,000, scaling toward ~$4M, with profit splits up to 95% (product figures secondary-sourced).\n\n_Company facts verified Jun 2026 against primary sources where reachable; see source notes. Figures may change — confirm on the firm's own site._",
+    "summary": "Hola Prime is a forex/CFD proprietary trading firm registered in Hong Kong (Hola Prime Limited) offering one-step, two-step, and instant (Direct) funding across MT4/MT5, cTrader, Match-Trader and DXtrade, with funded accounts up to $300,000.",
+    "reviewBody": "## Overview\n\nHola Prime (Hola Prime Limited, Hong Kong, with a Dubai office) grew fast on the back of flexible evaluations and rapid payout claims. It supports MT4, MT5, cTrader, Match-Trader, and DXtrade.\n\n## Funding & splits\n\nOne-step, two-step, and instant (Direct) models run from $5,000 up to $300,000, scaling toward ~$4M, with profit splits up to 95% (product figures secondary-sourced).\n\n_Company facts verified Jun 2026 against primary sources where reachable; see source notes. Figures may change — confirm on the firm's own site._",
     "platforms": [
       "MT4",
       "MT5",
       "cTrader",
       "Match-Trader",
-      "DXTrade"
+      "DXtrade"
     ],
     "liquidity": null,
     "websiteUrl": "https://holaprime.com",
     "affiliateUrl": "https://holaprime.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7djw0018z4ot0tzp641a",
+        "id": "cmqyqtx310018kbnv0txsmd8d",
         "challenge": "One-step",
         "minAccount": 5000,
         "maxAccount": 300000,
         "profitSplit": 95
       },
       {
-        "id": "cmqxg7djw0019z4oto53tqpj4",
+        "id": "cmqyqtx310019kbnvjon9jxsv",
         "challenge": "Two-step",
         "minAccount": 5000,
         "maxAccount": 300000,
         "profitSplit": 95
       },
       {
-        "id": "cmqxg7djw001az4ot0qgj99ed",
+        "id": "cmqyqtx31001akbnvgu9aqn5n",
         "challenge": "Instant",
         "minAccount": 5000,
         "maxAccount": 300000,
@@ -642,7 +642,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7djw001bz4ot9a1drvk3",
+        "id": "cmqyqtx31001bkbnv15fbyyxw",
         "code": "FOREXPROPREVIEWS",
         "percent": 15,
         "note": "15% off challenges",
@@ -651,17 +651,17 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dik0003z4ot3uicyypz",
+        "id": "cmqyqtx120003kbnvemcdobhs",
         "slug": "instant",
         "label": "Instant"
       }
@@ -671,7 +671,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     "maxAccount": 300000
   },
   {
-    "id": "cmqxg7dk1001cz4otwzuwl349",
+    "id": "cmqyqtx37001ckbnvfjt2gp02",
     "slug": "funderpro",
     "name": "FunderPro",
     "logoUrl": null,
@@ -693,21 +693,21 @@ export const FIRMS_DATA: FirmDTO[] = [
     "affiliateUrl": "https://funderpro.com/?ref=forexpropreviews",
     "plans": [
       {
-        "id": "cmqxg7dk1001dz4otbotqnoei",
+        "id": "cmqyqtx37001dkbnvqwnpxooe",
         "challenge": "One-step",
         "minAccount": 5000,
         "maxAccount": 200000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7dk1001ez4ot4hkvanp9",
+        "id": "cmqyqtx37001ekbnvu1yg7m1j",
         "challenge": "Two-step",
         "minAccount": 5000,
         "maxAccount": 200000,
         "profitSplit": 90
       },
       {
-        "id": "cmqxg7dk1001fz4otwjvfq43e",
+        "id": "cmqyqtx37001fkbnvxewkevgs",
         "challenge": "Instant",
         "minAccount": 5000,
         "maxAccount": 200000,
@@ -716,7 +716,7 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "coupons": [
       {
-        "id": "cmqxg7dk1001gz4otuyzop267",
+        "id": "cmqyqtx37001gkbnvik6jed3q",
         "code": "FOREXPROPREVIEWS",
         "percent": 10,
         "note": "10% off challenges",
@@ -725,17 +725,17 @@ export const FIRMS_DATA: FirmDTO[] = [
     ],
     "tags": [
       {
-        "id": "cmqxg7di60000z4ot578zrwlm",
+        "id": "cmqyqtx0h0000kbnv5td8sxpd",
         "slug": "one-step",
         "label": "One-step"
       },
       {
-        "id": "cmqxg7dic0001z4otq6eeoxsg",
+        "id": "cmqyqtx0q0001kbnvgqo3r2a1",
         "slug": "two-step",
         "label": "Two-step"
       },
       {
-        "id": "cmqxg7dik0003z4ot3uicyypz",
+        "id": "cmqyqtx120003kbnvemcdobhs",
         "slug": "instant",
         "label": "Instant"
       }

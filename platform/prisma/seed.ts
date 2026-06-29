@@ -323,11 +323,11 @@ const FIRMS: SeedFirm[] = [
     ceo: undefined, // NULL — not named on primary source
     incorporated: undefined, // NULL — not on primary source
     summary:
-      "Hola Prime is a forex/CFD proprietary trading firm registered in Hong Kong (Hola Prime Limited) offering one-step, two-step, and instant (Direct) funding across MT4/MT5, cTrader, Match-Trader and DXTrade, with funded accounts up to $300,000.",
+      "Hola Prime is a forex/CFD proprietary trading firm registered in Hong Kong (Hola Prime Limited) offering one-step, two-step, and instant (Direct) funding across MT4/MT5, cTrader, Match-Trader and DXtrade, with funded accounts up to $300,000.",
     reviewBody:
-      "## Overview\n\nHola Prime (Hola Prime Limited, Hong Kong, with a Dubai office) grew fast on the back of flexible evaluations and rapid payout claims. It supports MT4, MT5, cTrader, Match-Trader, and DXTrade.\n\n## Funding & splits\n\nOne-step, two-step, and instant (Direct) models run from $5,000 up to $300,000, scaling toward ~$4M, with profit splits up to 95% (product figures secondary-sourced).\n\n" +
+      "## Overview\n\nHola Prime (Hola Prime Limited, Hong Kong, with a Dubai office) grew fast on the back of flexible evaluations and rapid payout claims. It supports MT4, MT5, cTrader, Match-Trader, and DXtrade.\n\n## Funding & splits\n\nOne-step, two-step, and instant (Direct) models run from $5,000 up to $300,000, scaling toward ~$4M, with profit splits up to 95% (product figures secondary-sourced).\n\n" +
       PROVENANCE,
-    platforms: "MT4,MT5,cTrader,Match-Trader,DXTrade",
+    platforms: "MT4,MT5,cTrader,Match-Trader,DXtrade",
     websiteUrl: "https://holaprime.com",
     affiliateUrl: "https://holaprime.com/?ref=forexpropreviews",
     tagSlugs: ["one-step", "two-step", "instant"],

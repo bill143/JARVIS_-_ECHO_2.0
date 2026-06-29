@@ -110,11 +110,11 @@ export function DirectoryClient({ firms }: { firms: FirmDTO[] }) {
         Showing {visible.length} of {firms.length} firms
       </p>
 
-      {/* Table on >= sm, cards on mobile */}
-      <div className="hidden sm:block">
+      {/* Table on >= md (768px); stacked cards on phones/small tablets */}
+      <div className="hidden md:block">
         <FirmTable firms={visible} sortKey={sortKey} onSort={handleSort} />
       </div>
-      <div className="space-y-3 sm:hidden">
+      <div className="space-y-3 md:hidden">
         {visible.length === 0 ? (
           <div className="rounded-lg border border-panel-edge bg-panel p-8 text-center text-muted">
             No firms match your filters.
