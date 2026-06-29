@@ -62,8 +62,18 @@ export function Footer() {
           ))}
         </div>
 
-        {/* FTC affiliate disclosure (required, visible in footer). */}
+        {/* FTC affiliate disclosure + industry simulated-environment notice. */}
         <p className="mt-8 border-t border-line pt-6 text-xs leading-relaxed text-muted">
+          <strong className="text-text">Simulated-environment notice:</strong>{" "}
+          Proprietary trading firms operate evaluations in simulated/demo
+          environments. References to &ldquo;funding,&rdquo; account sizes,
+          &ldquo;profit,&rdquo; and &ldquo;payouts&rdquo; describe simulated
+          capital and performance-based <em>rewards</em>, not live investment
+          returns or a brokerage account. Figures and firm rules change
+          frequently — always confirm current terms on the firm&apos;s official
+          site before purchasing.
+        </p>
+        <p className="mt-4 text-xs leading-relaxed text-muted">
           <strong className="text-text">Affiliate disclosure:</strong> Some
           links on this site are affiliate links. If you sign up with a firm
           through one of these links, we may earn a commission at no extra cost
