@@ -102,7 +102,48 @@ def system_prompt() -> str:
     )
 
 
+def report_microphone() -> None:
+    """Print, at startup, exactly which input device JARVIS will open and its
+    live level over ~1s, so a silent/wrong mic is obvious immediately."""
+    try:
+        import struct
+
+        import pyaudio
+    except ImportError:
+        return
+    pa = pyaudio.PyAudio()
+    try:
+        index = AUDIO_INPUT_DEVICE_INDEX
+        if index is None:
+            info = pa.get_default_input_device_info()
+            index = int(info["index"])
+            source = "OS default"
+        else:
+            info = pa.get_device_info_by_index(index)
+            source = "AUDIO_INPUT_DEVICE_INDEX"
+        print(f"[JARVIS] Microphone: {source} -> index {index} ({info['name']})", flush=True)
+        # Quick 1-second live-level probe.
+        stream = pa.open(
+            format=pyaudio.paInt16, channels=1, rate=16000, input=True,
+            input_device_index=index, frames_per_buffer=1024,
+        )
+        peak = 0
+        for _ in range(16):
+            data = stream.read(1024, exception_on_overflow=False)
+            n = len(data) // 2
+            if n:
+                peak = max(peak, int((sum(s * s for s in struct.unpack(f"{n}h", data)) / n) ** 0.5))
+        stream.close()
+        verdict = "OK (heard sound)" if peak > 150 else "SILENT — talk now; if this stays low the mic is wrong"
+        print(f"[JARVIS] Mic level over 1s: {peak}  -> {verdict}", flush=True)
+    except Exception as exc:  # noqa: BLE001 - purely diagnostic
+        print(f"[JARVIS] Microphone check failed: {exc}", flush=True)
+    finally:
+        pa.terminate()
+
+
 async def run() -> None:
+    report_microphone()
     transport = LocalAudioTransport(
         LocalAudioTransportParams(
             audio_in_enabled=True,
