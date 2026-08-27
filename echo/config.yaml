@@ -1,0 +1,162 @@
+# ECHO — model registry for the LiteLLM proxy.
+#
+# This is the single source of truth for ECHO's routing. It defines:
+#   * 16 concrete MODEL ALIASES (provider models you can call directly), and
+#   * 6 TIER aliases (semantic routes JARVIS/clients actually request), each
+#     with an automatic FALLBACK CHAIN (router_settings.fallbacks below).
+#
+# Keys are ALWAYS pulled from the environment (os.environ/...): never hardcode,
+# never commit secrets. Model ids are tunable — bump them as providers release
+# new versions; the alias names are the stable contract callers depend on.
+
+model_list:
+  # ---------------- 16 model aliases (direct provider models) ----------------
+  # Anthropic
+  - model_name: anthropic-sonnet
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: anthropic-haiku
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_API_KEY
+  # OpenAI
+  - model_name: openai-gpt4o
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: openai-gpt4o-mini
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: openai-gpt41
+    litellm_params:
+      model: openai/gpt-4.1
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: openai-o3-mini
+    litellm_params:
+      model: openai/o3-mini
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: openai-o1
+    litellm_params:
+      model: openai/o1
+      api_key: os.environ/OPENAI_API_KEY
+  # Google (Gemini)
+  - model_name: google-gemini-pro
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: google-gemini-25-pro
+    litellm_params:
+      model: gemini/gemini-2.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: google-gemini-flash
+    litellm_params:
+      model: gemini/gemini-2.0-flash
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: google-gemini-flash-lite
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY
+  # Mirrors the funded alias on the live ECHO (C:\dev\echo); JARVIS's default
+  # ECHO_MODEL points here. NEEDS-CONFIRMATION: verify the exact Google model id
+  # this should resolve to in the live stack.
+  - model_name: gemini-3.1-pro-preview
+    litellm_params:
+      model: gemini/gemini-3.1-pro-preview
+      api_key: os.environ/GEMINI_API_KEY
+  # DeepSeek
+  - model_name: deepseek-chat
+    litellm_params:
+      model: deepseek/deepseek-chat
+      api_key: os.environ/DEEPSEEK_API_KEY
+  - model_name: deepseek-reasoner
+    litellm_params:
+      model: deepseek/deepseek-reasoner
+      api_key: os.environ/DEEPSEEK_API_KEY
+  # xAI (Grok)
+  - model_name: xai-grok
+    litellm_params:
+      model: xai/grok-2
+      api_key: os.environ/XAI_API_KEY
+  - model_name: xai-grok-mini
+    litellm_params:
+      model: xai/grok-2-mini
+      api_key: os.environ/XAI_API_KEY
+  - model_name: openai-gpt41-mini
+    litellm_params:
+      model: openai/gpt-4.1-mini
+      api_key: os.environ/OPENAI_API_KEY
+
+  # ---------------- 6 tier aliases (semantic routes) ----------------
+  # Each tier points to a PRIMARY model; the fallback chain lives in
+  # router_settings.fallbacks below.
+  - model_name: tier-compliance      # high-accuracy, low-risk answers
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: tier-long-doc        # large-context document work
+    litellm_params:
+      model: gemini/gemini-1.5-pro
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: tier-strategy        # top-end planning / synthesis
+    litellm_params:
+      model: anthropic/claude-sonnet-4-6
+      api_key: os.environ/ANTHROPIC_API_KEY
+  - model_name: tier-bulk            # cheap/fast high-volume
+    litellm_params:
+      model: openai/gpt-4o-mini
+      api_key: os.environ/OPENAI_API_KEY
+  - model_name: tier-reasoning       # deliberate, step-by-step reasoning
+    litellm_params:
+      model: deepseek/deepseek-reasoner
+      api_key: os.environ/DEEPSEEK_API_KEY
+  - model_name: tier-realtime        # lowest latency (voice / JARVIS default)
+    litellm_params:
+      model: anthropic/claude-haiku-4-5-20251001
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+# Fallback chains: if the primary errors (rate limit, outage, bad key), LiteLLM
+# automatically retries the next model in the list, across providers.
+router_settings:
+  fallbacks:
+    - tier-compliance: [anthropic-sonnet, openai-gpt4o, google-gemini-pro]
+    - tier-long-doc: [google-gemini-pro, anthropic-sonnet, openai-gpt41]
+    - tier-strategy: [anthropic-sonnet, openai-gpt4o, google-gemini-25-pro]
+    - tier-bulk: [openai-gpt4o-mini, anthropic-haiku, google-gemini-flash, deepseek-chat]
+    - tier-reasoning: [deepseek-reasoner, openai-o3-mini, openai-o1]
+    - tier-realtime: [anthropic-haiku, openai-gpt4o-mini, google-gemini-flash]
+    # Direct-alias fallbacks (same provider family degradation)
+    - anthropic-sonnet: [openai-gpt4o, google-gemini-pro]
+    - anthropic-haiku: [openai-gpt4o-mini, google-gemini-flash]
+    - openai-gpt4o: [anthropic-sonnet, google-gemini-pro]
+    - openai-gpt4o-mini: [anthropic-haiku, google-gemini-flash]
+    - openai-gpt41: [anthropic-sonnet, google-gemini-25-pro]
+    - openai-gpt41-mini: [openai-gpt4o-mini, anthropic-haiku]
+    - openai-o3-mini: [openai-o1, deepseek-reasoner]
+    - openai-o1: [openai-o3-mini, deepseek-reasoner]
+    - google-gemini-pro: [anthropic-sonnet, openai-gpt41]
+    - google-gemini-25-pro: [anthropic-sonnet, openai-gpt4o]
+    - google-gemini-flash: [openai-gpt4o-mini, anthropic-haiku]
+    - google-gemini-flash-lite: [google-gemini-flash, openai-gpt4o-mini]
+    - gemini-3.1-pro-preview: [google-gemini-25-pro, google-gemini-pro]
+    - deepseek-chat: [openai-gpt4o-mini, anthropic-haiku]
+    - deepseek-reasoner: [openai-o3-mini, openai-o1]
+    - xai-grok: [openai-gpt4o, anthropic-sonnet]
+    - xai-grok-mini: [openai-gpt4o-mini, anthropic-haiku]
+  num_retries: 2
+  timeout: 120
+  routing_strategy: simple-shuffle
+
+# Observability + logging. Langfuse captures every trace; json_logs emits one
+# structured line per request (alias, model, tokens, latency, cost).
+litellm_settings:
+  success_callback: ["langfuse"]
+  failure_callback: ["langfuse"]
+  json_logs: true
+  drop_params: true
+
+general_settings:
+  # The proxy requires a master key to accept requests (set in .env). This is
+  # ECHO's own key that JARVIS/clients present — NOT a provider key.
+  master_key: os.environ/ECHO_MASTER_KEY

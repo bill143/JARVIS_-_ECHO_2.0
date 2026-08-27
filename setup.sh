@@ -5,10 +5,9 @@
 #  This script will:
 #    1. Check that Python 3 is installed
 #    2. Create a virtual environment (.venv)
-#    3. Install all required libraries
-#    4. Download the voice-detection model files
-#    5. Ask for your API keys (only the first time) and save them to .env
-#    6. Launch the assistant
+#    3. Install all required libraries (Pipecat + local Whisper/Kokoro voice stack)
+#    4. Ask for your Claude API key (only the first time) and save it to .env
+#    5. Launch the assistant (desktop build: local mic + speaker)
 #
 #  Just run:  bash setup.sh
 #
@@ -66,61 +65,52 @@ say "Upgrading pip and installing libraries (this can take a few minutes)..."
 "$VENV_PY" -m pip install -r requirements.txt
 ok "Libraries installed."
 
-# ----- 4. Download the voice-detection model files -----
-say "Downloading model files (Silero VAD / turn detector)..."
-"$VENV_PY" assistant.py download-files
-ok "Model files ready."
-
-# ----- 5. Collect API keys (only if .env doesn't exist yet) -----
+# ----- 4. Collect the Claude API key (only if .env doesn't exist yet) -----
 if [ -f ".env" ]; then
-  ok ".env already exists - skipping the key questions."
+  ok ".env already exists - skipping the key question."
 else
   echo ""
-  say "Let's set up your API keys. Paste each one when asked, then press Enter."
-  echo "    (Get them from: livekit.cloud, console.deepgram.com, platform.openai.com)"
+  say "Let's set up your Claude API key. Paste it when asked, then press Enter."
+  echo "    (Get one from: https://console.anthropic.com -> API Keys)"
   echo ""
 
-  ask() {  # usage: VALUE=$(ask "Prompt text")
-    # Prompts go to stderr so they're visible but NOT captured by $(...).
-    # Only the typed value is written to stdout (and thus captured).
-    local prompt="$1" var
-    printf "%s " "${BOLD}$prompt${RESET}" >&2
-    read -r var
-    while [ -z "$var" ]; do
-      printf "%s\n" "${YELLOW}!! ${RESET}That can't be empty." >&2
-      printf "%s " "${BOLD}$prompt${RESET}" >&2
-      read -r var
-    done
-    printf "%s" "$var"
-  }
+  printf "%s " "${BOLD}Anthropic API Key (sk-ant-...):${RESET}" >&2
+  read -r ANTHROPIC_API_KEY
+  while [ -z "$ANTHROPIC_API_KEY" ]; do
+    printf "%s\n" "${YELLOW}!! ${RESET}That can't be empty." >&2
+    printf "%s " "${BOLD}Anthropic API Key (sk-ant-...):${RESET}" >&2
+    read -r ANTHROPIC_API_KEY
+  done
 
-  LIVEKIT_URL=$(ask "LiveKit URL (wss://...):")
-  LIVEKIT_API_KEY=$(ask "LiveKit API Key:")
-  LIVEKIT_API_SECRET=$(ask "LiveKit API Secret:")
-  DEEPGRAM_API_KEY=$(ask "Deepgram API Key:")
-  OPENAI_API_KEY=$(ask "OpenAI API Key:")
+  # Seed the rest of the config from the example file, then drop in the key.
+  if [ -f ".env.example" ]; then
+    cp .env.example .env
+    # Replace the placeholder key line. Escape sed-significant chars in the key
+    # (backslash, the '|' delimiter, and '&' which expands to the whole match).
+    if command -v sed >/dev/null 2>&1; then
+      esc_key=$(printf '%s' "$ANTHROPIC_API_KEY" | sed -e 's/[\\&|]/\\&/g')
+      sed -i.bak "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$esc_key|" .env && rm -f .env.bak
+    else
+      echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" >> .env
+    fi
+  else
+    echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" > .env
+  fi
 
-  {
-    echo "LIVEKIT_URL=$LIVEKIT_URL"
-    echo "LIVEKIT_API_KEY=$LIVEKIT_API_KEY"
-    echo "LIVEKIT_API_SECRET=$LIVEKIT_API_SECRET"
-    echo "DEEPGRAM_API_KEY=$DEEPGRAM_API_KEY"
-    echo "OPENAI_API_KEY=$OPENAI_API_KEY"
-  } > .env
-
-  ok "Saved your keys to .env (this file is git-ignored and stays on your machine)."
+  ok "Saved your key to .env (this file is git-ignored and stays on your machine)."
 fi
 
-# ----- 6. Launch -----
+# ----- 5. Launch -----
 echo ""
-say "Starting JARVIS & ECHO 2.0..."
+say "Starting JARVIS & ECHO 2.0 (desktop build)..."
 echo ""
 echo "${GREEN}${BOLD}  Almost there!${RESET}"
-echo "  1. Open the playground:  ${CYAN}https://agents-playground.livekit.io/${RESET}"
-echo "  2. Connect it to the SAME LiveKit project as your keys."
-echo "  3. Allow your microphone (and camera, for vision) and start talking."
+echo "  - Allow microphone access if your OS asks."
+echo "  - Say ${BOLD}\"Hey JARVIS\"${RESET} to wake it, then talk."
+echo "  - Ask ${BOLD}\"what can you see?\"${RESET} to trigger the webcam."
 echo ""
+echo "  Prefer the browser (WebRTC) build instead?  Run:  ${CYAN}$VENV_PY assistant_web.py${RESET}"
 echo "  Press ${BOLD}Ctrl+C${RESET} in this window to stop the assistant."
 echo ""
 
-exec "$VENV_PY" assistant.py start
+exec "$VENV_PY" assistant.py

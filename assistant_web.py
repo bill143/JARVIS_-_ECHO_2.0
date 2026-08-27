@@ -1,19 +1,19 @@
-"""JARVIS & ECHO 2.0 — desktop build (local microphone + speaker).
+"""JARVIS & ECHO 2.0 — browser build (WebRTC microphone).
 
-Fully-local voice stack; ECHO (or Claude direct) as the brain:
+Closest to the old LiveKit UX: you talk to JARVIS in the browser. Same brain and
+same local voice stack (Whisper + Kokoro + Silero) as the desktop build — only
+the transport and the greeting trigger differ. Voice-only this phase (vision is
+quarantined in ``/deferred``).
 
-    mic --> Whisper (STT) --> wake-word gate --> LLM --> Kokoro (TTS) --> speaker
+Pipecat's development runner serves a ready-made web client and handles all the
+WebRTC signalling, so there's nothing else to wire up.
 
-STT (Whisper), TTS (Kokoro) and VAD (Silero) all run locally; only the LLM call
-leaves the machine. JARVIS is voice-only this phase (vision is quarantined in
-``/deferred``).
-
-Run:  ``python assistant.py``
+Run:  ``python assistant_web.py``   then open the printed URL (default
+http://localhost:7860).
 """
 
 from __future__ import annotations
 
-import asyncio
 import os
 
 from dotenv import load_dotenv
@@ -28,14 +28,13 @@ from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
 )
+from pipecat.runner.types import RunnerArguments
 from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
-from pipecat.transports.local.audio import (
-    LocalAudioTransport,
-    LocalAudioTransportParams,
-)
+from pipecat.transports.base_transport import BaseTransport, TransportParams
+from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
@@ -49,30 +48,10 @@ WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
 KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
 GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 
-# Route JARVIS's thinking through ECHO (the multi-provider proxy) when
-# configured; otherwise fall back to calling Anthropic directly. ECHO speaks an
-# OpenAI-compatible API, so we point an OpenAILLMService at it.
+# Route through ECHO (OpenAI-compatible) when configured, else Anthropic direct.
 ECHO_BASE_URL = os.getenv("ECHO_BASE_URL")  # e.g. http://localhost:4000/v1
 ECHO_API_KEY = os.getenv("ECHO_API_KEY") or os.getenv("ECHO_MASTER_KEY")
 ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
-
-
-def _optional_int_env(name: str):
-    """Parse an optional integer env var; blank/invalid -> None (use OS default)."""
-    raw = os.getenv(name)
-    if raw is None or raw.strip() == "":
-        return None
-    try:
-        return int(raw.strip())
-    except ValueError:
-        return None
-
-
-# Explicit audio device indices (PyAudio). Leave unset to use the OS defaults.
-# Run `python mic_test.py` to list device indices and levels, then set e.g.
-# AUDIO_INPUT_DEVICE_INDEX=3 to force a specific microphone.
-AUDIO_INPUT_DEVICE_INDEX = _optional_int_env("AUDIO_INPUT_DEVICE_INDEX")
-AUDIO_OUTPUT_DEVICE_INDEX = _optional_int_env("AUDIO_OUTPUT_DEVICE_INDEX")
 
 
 def build_llm():
@@ -102,47 +81,7 @@ def system_prompt() -> str:
     )
 
 
-def report_microphone() -> None:
-    """Print which input device JARVIS will open (index + name) at startup.
-
-    This only *queries* device metadata — it never opens a capture stream. An
-    earlier version opened a short probe stream here, but on Windows that extra
-    open/close left the device handing digital silence to the pipeline that
-    opened it a moment later. Run ``python mic_test.py`` to check live levels.
-    """
-    try:
-        import pyaudio
-    except ImportError:
-        return
-    pa = pyaudio.PyAudio()
-    try:
-        index = AUDIO_INPUT_DEVICE_INDEX
-        if index is None:
-            info = pa.get_default_input_device_info()
-            index = int(info["index"])
-            source = "OS default"
-        else:
-            info = pa.get_device_info_by_index(index)
-            source = "AUDIO_INPUT_DEVICE_INDEX"
-        print(f"[JARVIS] Microphone: {source} -> index {index} ({info['name']})", flush=True)
-    except Exception as exc:  # noqa: BLE001 - purely diagnostic
-        print(f"[JARVIS] Microphone check failed: {exc}", flush=True)
-    finally:
-        pa.terminate()
-
-
-async def run() -> None:
-    report_microphone()
-    transport = LocalAudioTransport(
-        LocalAudioTransportParams(
-            audio_in_enabled=True,
-            audio_out_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(),
-            input_device_index=AUDIO_INPUT_DEVICE_INDEX,
-            output_device_index=AUDIO_OUTPUT_DEVICE_INDEX,
-        )
-    )
-
+async def run_bot(transport: BaseTransport) -> None:
     stt = WhisperSTTService(model=WHISPER_MODEL)
     tts = KokoroTTSService(voice_id=KOKORO_VOICE)
     llm = build_llm()
@@ -163,7 +102,7 @@ async def run() -> None:
         [
             transport.input(),
             stt,
-            wake_gate,               # drop everything until "hey jarvis"
+            wake_gate,
             aggregators.user(),
             llm,
             tts,
@@ -177,21 +116,38 @@ async def run() -> None:
         params=PipelineParams(allow_interruptions=True, enable_metrics=False),
     )
 
-    # Greet on startup.
-    await task.queue_frames([TTSSpeakFrame(GREETING)])
+    @transport.event_handler("on_client_connected")
+    async def _on_client_connected(transport, client):  # noqa: ANN001
+        # Greet as soon as the browser connects.
+        await task.queue_frames([TTSSpeakFrame(GREETING)])
 
-    runner = PipelineRunner(handle_sigint=True)
+    @transport.event_handler("on_client_disconnected")
+    async def _on_client_disconnected(transport, client):  # noqa: ANN001
+        await task.cancel()
+
+    runner = PipelineRunner(handle_sigint=False)
     await runner.run(task)
 
 
-def main() -> None:
+async def bot(runner_args: RunnerArguments) -> None:
+    """Entry point the Pipecat dev runner calls when a browser connects."""
+    transport = SmallWebRTCTransport(
+        params=TransportParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True,          # voice-only: no video track this phase
+            vad_analyzer=SileroVADAnalyzer(),
+        ),
+        webrtc_connection=runner_args.webrtc_connection,
+    )
+    await run_bot(transport)
+
+
+if __name__ == "__main__":
     if not ECHO_BASE_URL and not os.getenv("ANTHROPIC_API_KEY"):
         raise SystemExit(
             "Set ECHO_BASE_URL to route through ECHO, or ANTHROPIC_API_KEY to call "
             "Anthropic directly. Copy .env.example to .env to configure."
         )
-    asyncio.run(run())
+    from pipecat.runner.run import main
 
-
-if __name__ == "__main__":
     main()

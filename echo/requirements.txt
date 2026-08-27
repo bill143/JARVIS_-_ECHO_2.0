@@ -1,0 +1,12 @@
+# ECHO — multi-provider LLM proxy (LiteLLM core).
+#
+# LiteLLM gives us the OpenAI-compatible endpoint, model aliases, fallback
+# chains, cost/token/latency logging, Langfuse callbacks, and the /health
+# endpoint. Pinned to the 1.x line; bump deliberately.
+litellm[proxy]~=1.55
+
+# Observability.
+langfuse~=2.50
+
+# Config validation / tooling.
+pyyaml~=6.0
