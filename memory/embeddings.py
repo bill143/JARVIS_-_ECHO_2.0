@@ -95,4 +95,6 @@ def build_embeddings_from_env() -> EmbeddingFunction:
             base_url=os.getenv("EMBEDDINGS_BASE_URL"),
             dimensions=int(os.getenv("EMBEDDINGS_DIM", "1536")),
         )
-    return HashingEmbeddings(dimensions=int(os.getenv("EMBEDDINGS_DIM", "384")))
+    # Default to 1536 so the out-of-the-box config matches memory/schema.sql's
+    # vector(1536) column when MEMORY_BACKEND=supabase.
+    return HashingEmbeddings(dimensions=int(os.getenv("EMBEDDINGS_DIM", "1536")))

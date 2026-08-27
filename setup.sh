@@ -85,9 +85,11 @@ else
   # Seed the rest of the config from the example file, then drop in the key.
   if [ -f ".env.example" ]; then
     cp .env.example .env
-    # Replace the placeholder key line.
+    # Replace the placeholder key line. Escape sed-significant chars in the key
+    # (backslash, the '|' delimiter, and '&' which expands to the whole match).
     if command -v sed >/dev/null 2>&1; then
-      sed -i.bak "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY|" .env && rm -f .env.bak
+      esc_key=$(printf '%s' "$ANTHROPIC_API_KEY" | sed -e 's/[\\&|]/\\&/g')
+      sed -i.bak "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$esc_key|" .env && rm -f .env.bak
     else
       echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" >> .env
     fi

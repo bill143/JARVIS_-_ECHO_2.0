@@ -122,7 +122,7 @@ try:
     from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
     _PIPECAT_AVAILABLE = True
-except Exception:  # pragma: no cover - exercised only without the extras
+except (ImportError, ModuleNotFoundError):  # pragma: no cover - only without the extras
     _PIPECAT_AVAILABLE = False
 
 

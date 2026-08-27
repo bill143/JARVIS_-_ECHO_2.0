@@ -78,9 +78,14 @@ AUDIO_OUTPUT_DEVICE_INDEX = _optional_int_env("AUDIO_OUTPUT_DEVICE_INDEX")
 def build_llm():
     """Return the LLM service: ECHO proxy if configured, else Anthropic direct."""
     if ECHO_BASE_URL:
+        if not ECHO_API_KEY:
+            raise SystemExit(
+                "ECHO_BASE_URL is set but ECHO_API_KEY (or ECHO_MASTER_KEY) is empty. "
+                "Add ECHO's key to your .env so JARVIS can authenticate to the proxy."
+            )
         return OpenAILLMService(
             base_url=ECHO_BASE_URL,
-            api_key=ECHO_API_KEY or "not-set",
+            api_key=ECHO_API_KEY,
             model=ECHO_MODEL,
         )
     return AnthropicLLMService(
