@@ -57,6 +57,24 @@ ECHO_API_KEY = os.getenv("ECHO_API_KEY") or os.getenv("ECHO_MASTER_KEY")
 ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
 
 
+def _optional_int_env(name: str):
+    """Parse an optional integer env var; blank/invalid -> None (use OS default)."""
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return None
+    try:
+        return int(raw.strip())
+    except ValueError:
+        return None
+
+
+# Explicit audio device indices (PyAudio). Leave unset to use the OS defaults.
+# Run `python mic_test.py` to list device indices and levels, then set e.g.
+# AUDIO_INPUT_DEVICE_INDEX=3 to force a specific microphone.
+AUDIO_INPUT_DEVICE_INDEX = _optional_int_env("AUDIO_INPUT_DEVICE_INDEX")
+AUDIO_OUTPUT_DEVICE_INDEX = _optional_int_env("AUDIO_OUTPUT_DEVICE_INDEX")
+
+
 def build_llm():
     """Return the LLM service: ECHO proxy if configured, else Anthropic direct."""
     if ECHO_BASE_URL:
@@ -85,6 +103,8 @@ async def run() -> None:
             audio_in_enabled=True,
             audio_out_enabled=True,
             vad_analyzer=SileroVADAnalyzer(),
+            input_device_index=AUDIO_INPUT_DEVICE_INDEX,
+            output_device_index=AUDIO_OUTPUT_DEVICE_INDEX,
         )
     )
 
