@@ -176,9 +176,12 @@ async def run() -> None:
         ]
     )
 
+    # The desktop build is an always-listening, wake-word assistant: it must not
+    # shut itself down after Pipecat's default 300s of no bot activity.
     task = PipelineTask(
         pipeline,
         params=PipelineParams(allow_interruptions=True, enable_metrics=False),
+        idle_timeout_secs=None,
     )
 
     # Greet on startup.
