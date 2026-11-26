@@ -22,6 +22,7 @@ stays the same.
 from __future__ import annotations
 
 import os
+import re
 import time
 from typing import Callable, Optional
 
@@ -100,8 +101,58 @@ class WakeWordGate:
                 remainder = text[idx + len(phrase):].strip(" ,.!?-")
                 return remainder or None
 
+        # Whisper often mishears the name ("Hey Jarvan", "Hey, Jarvus"): fall back
+        # to a word-level fuzzy match before giving up.
+        end = _fuzzy_phrase_end(text, self.phrases)
+        if end is not None:
+            self._wake()
+            remainder = text[end:].strip(" ,.!?-")
+            return remainder or None
+
         # Asleep and no wake phrase heard: drop it.
         return None
+
+
+_WORD_RE = re.compile(r"[A-Za-z']+")
+
+
+def _edit_distance(a: str, b: str) -> int:
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def _word_matches(heard: str, expected: str) -> bool:
+    """Exact for short words; for names (5+ letters) allow small mishearings.
+
+    Same first three letters, length within 1, and edit distance <= 2 — enough for
+    "jarvan"/"jarvus"/"jarves" without waking on unrelated words like "jars".
+    """
+    if heard == expected:
+        return True
+    if len(expected) < 5:
+        return False
+    return (
+        heard[:3] == expected[:3]
+        and abs(len(heard) - len(expected)) <= 1
+        and _edit_distance(heard, expected) <= 2
+    )
+
+
+def _fuzzy_phrase_end(text: str, phrases: list[str]) -> Optional[int]:
+    """Return the end offset of the first fuzzy match of any phrase, else None."""
+    words = [(m.group(0).lower(), m.end()) for m in _WORD_RE.finditer(text)]
+    for phrase in phrases:
+        target = phrase.split()
+        for i in range(len(words) - len(target) + 1):
+            window = words[i : i + len(target)]
+            if all(_word_matches(w, t) for (w, _), t in zip(window, target)):
+                return window[-1][1]
+    return None
 
 
 def gate_from_env(time_func: Callable[[], float] = time.monotonic) -> WakeWordGate:

@@ -47,6 +47,11 @@ load_dotenv()
 ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "JARVIS")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
+# "cpu" works everywhere. "cuda"/"auto" need the CUDA 12 runtime (cuBLAS + cuDNN)
+# on PATH; without it faster-whisper fails every segment with
+# "cublas64_12.dll is not found" whenever an NVIDIA GPU is present.
+WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu").strip().lower() or "cpu"
+WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8" if WHISPER_DEVICE == "cpu" else "default")
 KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
 GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 
@@ -87,7 +92,9 @@ def system_prompt() -> str:
 
 
 async def run_bot(transport: BaseTransport) -> None:
-    stt = WhisperSTTService(model=WHISPER_MODEL)
+    stt = WhisperSTTService(
+        model=WHISPER_MODEL, device=WHISPER_DEVICE, compute_type=WHISPER_COMPUTE_TYPE
+    )
     tts = KokoroTTSService(voice_id=KOKORO_VOICE)
     llm = build_llm()
 
@@ -103,7 +110,13 @@ async def run_bot(transport: BaseTransport) -> None:
     # vad_analyzer field (it was silently ignored), which left Whisper deaf.
     aggregators = LLMContextAggregatorPair(
         context,
-        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
+        user_params=LLMUserAggregatorParams(
+            vad_analyzer=SileroVADAnalyzer(),
+            # The wake gate drops non-wake speech, leaving a turn with no transcript;
+            # Pipecat's default would still run the LLM for it (and Anthropic rejects
+            # a context with no user message). Never answer what the gate filtered.
+            empty_user_turn=None,
+        ),
     )
 
     wake_gate = WakeWordProcessor(gate_from_env())
