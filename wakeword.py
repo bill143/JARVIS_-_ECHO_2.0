@@ -145,6 +145,8 @@ if _PIPECAT_AVAILABLE:
 
             if isinstance(frame, TranscriptionFrame):
                 forwarded = self._gate.feed(frame.text)
+                outcome = "dropped (no wake phrase / asleep)" if forwarded is None else f"-> LLM: {forwarded!r}"
+                print(f"[JARVIS] Heard: {frame.text!r} {outcome}", flush=True)
                 if forwarded is None:
                     # Dropped (asleep or wake-phrase only) — don't push it on.
                     return

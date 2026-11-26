@@ -27,6 +27,7 @@ from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
+    LLMUserAggregatorParams,
 )
 from pipecat.runner.types import RunnerArguments
 from pipecat.services.anthropic.llm import AnthropicLLMService
@@ -98,7 +99,12 @@ async def run_bot(transport: BaseTransport) -> None:
         messages=[{"role": "system", "content": system_prompt()}],
         tools=tools,
     )
-    aggregators = LLMContextAggregatorPair(context)
+    # Pipecat 1.x runs VAD in the user aggregator; TransportParams no longer has a
+    # vad_analyzer field (it was silently ignored), which left Whisper deaf.
+    aggregators = LLMContextAggregatorPair(
+        context,
+        user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
+    )
 
     wake_gate = WakeWordProcessor(gate_from_env())
 
@@ -139,7 +145,6 @@ async def bot(runner_args: RunnerArguments) -> None:
         params=TransportParams(
             audio_in_enabled=True,
             audio_out_enabled=True,          # voice-only: no video track this phase
-            vad_analyzer=SileroVADAnalyzer(),
         ),
         webrtc_connection=runner_args.webrtc_connection,
     )
