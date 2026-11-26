@@ -37,6 +37,7 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 from wakeword import WakeWordProcessor, gate_from_env
+from brain_config import echo_base_url, real_secret
 from memory_tools import register_memory_tools
 from mcp_tools import register_mcp_tools
 
@@ -49,9 +50,10 @@ KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
 GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 
 # Route through ECHO (OpenAI-compatible) when configured, else Anthropic direct.
-ECHO_BASE_URL = os.getenv("ECHO_BASE_URL")  # e.g. http://localhost:4000/v1
-ECHO_API_KEY = os.getenv("ECHO_API_KEY") or os.getenv("ECHO_MASTER_KEY")
+ECHO_BASE_URL = echo_base_url()  # e.g. http://localhost:4000/v1
+ECHO_API_KEY = real_secret("ECHO_API_KEY", "ECHO_MASTER_KEY")
 ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
+ANTHROPIC_API_KEY = real_secret("ANTHROPIC_API_KEY")
 
 
 def build_llm():
@@ -62,13 +64,15 @@ def build_llm():
                 "ECHO_BASE_URL is set but ECHO_API_KEY (or ECHO_MASTER_KEY) is empty. "
                 "Add ECHO's key to your .env so JARVIS can authenticate to the proxy."
             )
+        print(f"[JARVIS] Brain: ECHO -> {ECHO_BASE_URL} (model {ECHO_MODEL})", flush=True)
         return OpenAILLMService(
             base_url=ECHO_BASE_URL,
             api_key=ECHO_API_KEY,
             model=ECHO_MODEL,
         )
+    print(f"[JARVIS] Brain: Anthropic direct (model {ANTHROPIC_MODEL})", flush=True)
     return AnthropicLLMService(
-        api_key=os.environ["ANTHROPIC_API_KEY"],
+        api_key=ANTHROPIC_API_KEY,
         model=ANTHROPIC_MODEL,
     )
 
@@ -143,10 +147,11 @@ async def bot(runner_args: RunnerArguments) -> None:
 
 
 if __name__ == "__main__":
-    if not ECHO_BASE_URL and not os.getenv("ANTHROPIC_API_KEY"):
+    if not ECHO_BASE_URL and not ANTHROPIC_API_KEY:
         raise SystemExit(
-            "Set ECHO_BASE_URL to route through ECHO, or ANTHROPIC_API_KEY to call "
-            "Anthropic directly. Copy .env.example to .env to configure."
+            "No brain configured: ECHO_BASE_URL is blank and ANTHROPIC_API_KEY is empty "
+            "or still the .env.example placeholder. Set ECHO_BASE_URL (+ ECHO_API_KEY) to "
+            "route through ECHO, or a real ANTHROPIC_API_KEY to call Anthropic directly."
         )
     from pipecat.runner.run import main
 
