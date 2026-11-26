@@ -5,10 +5,9 @@ REM   ----------------------------------------------------------
 REM   This script will:
 REM     1. Check that Python is installed
 REM     2. Create a virtual environment (.venv)
-REM     3. Install all required libraries
-REM     4. Download the voice-detection model files
-REM     5. Ask for your API keys (only the first time) -> .env
-REM     6. Launch the assistant
+REM     3. Install all required libraries (Pipecat + local voice stack)
+REM     4. Ask for your Claude API key (only the first time) -> .env
+REM     5. Launch the assistant (desktop build: local mic + speaker)
 REM
 REM   Just double-click setup.bat  (or run it from a terminal).
 REM ============================================================
@@ -68,69 +67,41 @@ if errorlevel 1 (
 )
 echo  OK  Libraries installed.
 
-REM ----- 4. Download the voice-detection model files -----
-echo ==^> Downloading model files (Silero VAD / turn detector)...
-"%VENV_PY%" assistant.py download-files
-echo  OK  Model files ready.
-
-REM ----- 5. Collect API keys (only if .env doesn't exist yet) -----
+REM ----- 4. Collect the Claude API key (only if .env doesn't exist yet) -----
 if exist ".env" (
-    echo  OK  .env already exists - skipping the key questions.
+    echo  OK  .env already exists - skipping the key question.
     goto launch
 )
 
 echo.
-echo ==^> Let's set up your API keys. Paste each one when asked, then press Enter.
-echo     (Get them from: livekit.cloud, console.deepgram.com, platform.openai.com)
+echo ==^> Let's set up your Claude API key. Paste it when asked, then press Enter.
+echo     (Get one from: https://console.anthropic.com -^> API Keys)
 echo.
 
-:ask_livekit_url
-set "LIVEKIT_URL="
-set /p "LIVEKIT_URL=LiveKit URL (wss://...): "
-if not defined LIVEKIT_URL ( echo  !! That can't be empty. & goto ask_livekit_url )
+:ask_anthropic
+set "ANTHROPIC_API_KEY="
+set /p "ANTHROPIC_API_KEY=Anthropic API Key (sk-ant-...): "
+if not defined ANTHROPIC_API_KEY ( echo  !! That can't be empty. & goto ask_anthropic )
 
-:ask_livekit_key
-set "LIVEKIT_API_KEY="
-set /p "LIVEKIT_API_KEY=LiveKit API Key: "
-if not defined LIVEKIT_API_KEY ( echo  !! That can't be empty. & goto ask_livekit_key )
+REM Write the key. Everything else has a sensible default in the code, but you
+REM can copy .env.example to .env yourself to tweak the model, voice, wake word, etc.
+echo ANTHROPIC_API_KEY=!ANTHROPIC_API_KEY!> .env
 
-:ask_livekit_secret
-set "LIVEKIT_API_SECRET="
-set /p "LIVEKIT_API_SECRET=LiveKit API Secret: "
-if not defined LIVEKIT_API_SECRET ( echo  !! That can't be empty. & goto ask_livekit_secret )
-
-:ask_deepgram
-set "DEEPGRAM_API_KEY="
-set /p "DEEPGRAM_API_KEY=Deepgram API Key: "
-if not defined DEEPGRAM_API_KEY ( echo  !! That can't be empty. & goto ask_deepgram )
-
-:ask_openai
-set "OPENAI_API_KEY="
-set /p "OPENAI_API_KEY=OpenAI API Key: "
-if not defined OPENAI_API_KEY ( echo  !! That can't be empty. & goto ask_openai )
-
-(
-    echo LIVEKIT_URL=!LIVEKIT_URL!
-    echo LIVEKIT_API_KEY=!LIVEKIT_API_KEY!
-    echo LIVEKIT_API_SECRET=!LIVEKIT_API_SECRET!
-    echo DEEPGRAM_API_KEY=!DEEPGRAM_API_KEY!
-    echo OPENAI_API_KEY=!OPENAI_API_KEY!
-) > .env
-
-echo  OK  Saved your keys to .env (this file is git-ignored and stays on your machine).
+echo  OK  Saved your key to .env (this file is git-ignored and stays on your machine).
 
 :launch
 echo.
-echo ==^> Starting JARVIS ^& ECHO 2.0...
+echo ==^> Starting JARVIS ^& ECHO 2.0 (desktop build)...
 echo.
 echo   Almost there!
-echo   1. Open the playground:  https://agents-playground.livekit.io/
-echo   2. Connect it to the SAME LiveKit project as your keys.
-echo   3. Allow your microphone (and camera, for vision) and start talking.
+echo   - Allow microphone access if Windows asks.
+echo   - Say "Hey JARVIS" to wake it, then talk.
+echo   - Ask "what can you see?" to trigger the webcam.
 echo.
+echo   Prefer the browser (WebRTC) build?  Run:  "%VENV_PY%" assistant_web.py
 echo   Press Ctrl+C in this window to stop the assistant.
 echo.
 
-"%VENV_PY%" assistant.py start
+"%VENV_PY%" assistant.py
 
 pause

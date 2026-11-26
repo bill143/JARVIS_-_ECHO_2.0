@@ -1,0 +1,20 @@
+# JARVIS & ECHO 2.0 — browser build in a container.
+#
+#   cp .env.example .env        # add ANTHROPIC_API_KEY
+#   docker compose up --build   # http://localhost:7860
+#
+# The jarvis-models volume persists the Whisper + Kokoro model files so they only
+# download once.
+services:
+  jarvis:
+    build: .
+    ports:
+      - "7860:7860"
+    env_file:
+      - .env
+    volumes:
+      - jarvis-models:/models
+    restart: unless-stopped
+
+volumes:
+  jarvis-models:

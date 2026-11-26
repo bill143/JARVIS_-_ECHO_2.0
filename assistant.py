@@ -1,152 +1,197 @@
-import asyncio
-from typing import Annotated
+"""JARVIS & ECHO 2.0 — desktop build (local microphone + speaker).
 
-# Load API keys from the .env file (created by setup.sh / setup.bat) into the
-# environment so LiveKit, Deepgram, and OpenAI can read them automatically.
+Fully-local voice stack; ECHO (or Claude direct) as the brain:
+
+    mic --> Whisper (STT) --> wake-word gate --> LLM --> Kokoro (TTS) --> speaker
+
+STT (Whisper), TTS (Kokoro) and VAD (Silero) all run locally; only the LLM call
+leaves the machine. JARVIS is voice-only this phase (vision is quarantined in
+``/deferred``).
+
+Run:  ``python assistant.py``
+"""
+
+from __future__ import annotations
+
+import asyncio
+import os
+
 from dotenv import load_dotenv
 
-from livekit import agents, rtc
-from livekit.agents import JobContext, WorkerOptions, cli, tokenize, tts
-from livekit.agents.llm import (
-    ChatContext,
-    ChatImage,
-    ChatMessage,
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
+from pipecat.audio.vad.silero import SileroVADAnalyzer
+from pipecat.frames.frames import TTSSpeakFrame
+from pipecat.pipeline.pipeline import Pipeline
+from pipecat.pipeline.runner import PipelineRunner
+from pipecat.pipeline.task import PipelineParams, PipelineTask
+from pipecat.processors.aggregators.llm_context import LLMContext
+from pipecat.processors.aggregators.llm_response_universal import (
+    LLMContextAggregatorPair,
 )
-from livekit.agents.voice_assistant import VoiceAssistant
-from livekit.plugins import deepgram, openai, silero
+from pipecat.services.anthropic.llm import AnthropicLLMService
+from pipecat.services.openai.llm import OpenAILLMService
+from pipecat.services.kokoro.tts import KokoroTTSService
+from pipecat.services.whisper.stt import WhisperSTTService
+from pipecat.transports.local.audio import (
+    LocalAudioTransport,
+    LocalAudioTransportParams,
+)
+
+from wakeword import WakeWordProcessor, gate_from_env
+from memory_tools import register_memory_tools
+from mcp_tools import register_mcp_tools
 
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# Want to rename the assistant? Change ASSISTANT_NAME below. Note: VOICE must
-# stay one of OpenAI's TTS voices (alloy, echo, fable, onyx, nova, shimmer).
-# ---------------------------------------------------------------------------
-ASSISTANT_NAME = "Alloy"
-VOICE = "alloy"
+ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "JARVIS")
+ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
+KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
+GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
+
+# Route JARVIS's thinking through ECHO (the multi-provider proxy) when
+# configured; otherwise fall back to calling Anthropic directly. ECHO speaks an
+# OpenAI-compatible API, so we point an OpenAILLMService at it.
+ECHO_BASE_URL = os.getenv("ECHO_BASE_URL")  # e.g. http://localhost:4000/v1
+ECHO_API_KEY = os.getenv("ECHO_API_KEY") or os.getenv("ECHO_MASTER_KEY")
+ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
 
 
-class AssistantFunction(agents.llm.FunctionContext):
-    """This class is used to define functions that will be called by the assistant."""
-
-    @agents.llm.ai_callable(
-        description=(
-            "Called when asked to evaluate something that would require vision capabilities,"
-            "for example, an image, video, or the webcam feed."
-        )
-    )
-    async def image(
-        self,
-        user_msg: Annotated[
-            str,
-            agents.llm.TypeInfo(
-                description="The user message that triggered this function"
-            ),
-        ],
-    ):
-        print(f"Message triggering vision capabilities: {user_msg}")
+def _optional_int_env(name: str):
+    """Parse an optional integer env var; blank/invalid -> None (use OS default)."""
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return None
+    try:
+        return int(raw.strip())
+    except ValueError:
         return None
 
 
-async def get_video_track(room: rtc.Room):
-    """Get the first video track from the room. We'll use this track to process images."""
-
-    video_track = asyncio.Future[rtc.RemoteVideoTrack]()
-
-    for _, participant in room.remote_participants.items():
-        for _, track_publication in participant.track_publications.items():
-            if track_publication.track is not None and isinstance(
-                track_publication.track, rtc.RemoteVideoTrack
-            ):
-                video_track.set_result(track_publication.track)
-                print(f"Using video track {track_publication.track.sid}")
-                break
-
-    return await video_track
+# Explicit audio device indices (PyAudio). Leave unset to use the OS defaults.
+# Run `python mic_test.py` to list device indices and levels, then set e.g.
+# AUDIO_INPUT_DEVICE_INDEX=3 to force a specific microphone.
+AUDIO_INPUT_DEVICE_INDEX = _optional_int_env("AUDIO_INPUT_DEVICE_INDEX")
+AUDIO_OUTPUT_DEVICE_INDEX = _optional_int_env("AUDIO_OUTPUT_DEVICE_INDEX")
 
 
-async def entrypoint(ctx: JobContext):
-    await ctx.connect()
-    print(f"Room name: {ctx.room.name}")
-
-    chat_context = ChatContext(
-        messages=[
-            ChatMessage(
-                role="system",
-                content=(
-                    f"Your name is {ASSISTANT_NAME}. You are a funny, witty bot. Your interface with users will be voice and vision."
-                    "Respond with short and concise answers. Avoid using unpronouncable punctuation or emojis."
-                ),
+def build_llm():
+    """Return the LLM service: ECHO proxy if configured, else Anthropic direct."""
+    if ECHO_BASE_URL:
+        if not ECHO_API_KEY:
+            raise SystemExit(
+                "ECHO_BASE_URL is set but ECHO_API_KEY (or ECHO_MASTER_KEY) is empty. "
+                "Add ECHO's key to your .env so JARVIS can authenticate to the proxy."
             )
+        return OpenAILLMService(
+            base_url=ECHO_BASE_URL,
+            api_key=ECHO_API_KEY,
+            model=ECHO_MODEL,
+        )
+    return AnthropicLLMService(
+        api_key=os.environ["ANTHROPIC_API_KEY"],
+        model=ANTHROPIC_MODEL,
+    )
+
+
+def system_prompt() -> str:
+    return (
+        f"Your name is {ASSISTANT_NAME}. You are a witty, helpful voice assistant. "
+        "Your interface with the user is voice. Keep answers short and "
+        "conversational. Avoid unpronounceable punctuation, markdown, and emojis."
+    )
+
+
+def report_microphone() -> None:
+    """Print which input device JARVIS will open (index + name) at startup.
+
+    This only *queries* device metadata — it never opens a capture stream. An
+    earlier version opened a short probe stream here, but on Windows that extra
+    open/close left the device handing digital silence to the pipeline that
+    opened it a moment later. Run ``python mic_test.py`` to check live levels.
+    """
+    try:
+        import pyaudio
+    except ImportError:
+        return
+    pa = pyaudio.PyAudio()
+    try:
+        index = AUDIO_INPUT_DEVICE_INDEX
+        if index is None:
+            info = pa.get_default_input_device_info()
+            index = int(info["index"])
+            source = "OS default"
+        else:
+            info = pa.get_device_info_by_index(index)
+            source = "AUDIO_INPUT_DEVICE_INDEX"
+        print(f"[JARVIS] Microphone: {source} -> index {index} ({info['name']})", flush=True)
+    except Exception as exc:  # noqa: BLE001 - purely diagnostic
+        print(f"[JARVIS] Microphone check failed: {exc}", flush=True)
+    finally:
+        pa.terminate()
+
+
+async def run() -> None:
+    report_microphone()
+    transport = LocalAudioTransport(
+        LocalAudioTransportParams(
+            audio_in_enabled=True,
+            audio_out_enabled=True,
+            vad_analyzer=SileroVADAnalyzer(),
+            input_device_index=AUDIO_INPUT_DEVICE_INDEX,
+            output_device_index=AUDIO_OUTPUT_DEVICE_INDEX,
+        )
+    )
+
+    stt = WhisperSTTService(model=WHISPER_MODEL)
+    tts = KokoroTTSService(voice_id=KOKORO_VOICE)
+    llm = build_llm()
+
+    # Cross-session memory (remember/recall) and any configured MCP servers.
+    mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
+    tools = ToolsSchema(standard_tools=[*register_memory_tools(llm), *mcp_schemas])
+
+    context = LLMContext(
+        messages=[{"role": "system", "content": system_prompt()}],
+        tools=tools,
+    )
+    aggregators = LLMContextAggregatorPair(context)
+
+    wake_gate = WakeWordProcessor(gate_from_env())
+
+    pipeline = Pipeline(
+        [
+            transport.input(),
+            stt,
+            wake_gate,               # drop everything until "hey jarvis"
+            aggregators.user(),
+            llm,
+            tts,
+            transport.output(),
+            aggregators.assistant(),
         ]
     )
 
-    gpt = openai.LLM(model="gpt-4o")
-
-    # Since OpenAI does not support streaming TTS, we'll use it with a StreamAdapter
-    # to make it compatible with the VoiceAssistant
-    openai_tts = tts.StreamAdapter(
-        tts=openai.TTS(voice=VOICE),
-        sentence_tokenizer=tokenize.basic.SentenceTokenizer(),
+    task = PipelineTask(
+        pipeline,
+        params=PipelineParams(allow_interruptions=True, enable_metrics=False),
     )
 
-    latest_image: rtc.VideoFrame | None = None
+    # Greet on startup.
+    await task.queue_frames([TTSSpeakFrame(GREETING)])
 
-    assistant = VoiceAssistant(
-        vad=silero.VAD.load(),  # We'll use Silero's Voice Activity Detector (VAD)
-        stt=deepgram.STT(),  # We'll use Deepgram's Speech To Text (STT)
-        llm=gpt,
-        tts=openai_tts,  # We'll use OpenAI's Text To Speech (TTS)
-        fnc_ctx=AssistantFunction(),
-        chat_ctx=chat_context,
-    )
+    runner = PipelineRunner(handle_sigint=True)
+    await runner.run(task)
 
-    chat = rtc.ChatManager(ctx.room)
 
-    async def _answer(text: str, use_image: bool = False):
-        """
-        Answer the user's message with the given text and optionally the latest
-        image captured from the video track.
-        """
-        content: list[str | ChatImage] = [text]
-        if use_image and latest_image:
-            content.append(ChatImage(image=latest_image))
-
-        chat_context.messages.append(ChatMessage(role="user", content=content))
-
-        stream = gpt.chat(chat_ctx=chat_context)
-        await assistant.say(stream, allow_interruptions=True)
-
-    @chat.on("message_received")
-    def on_message_received(msg: rtc.ChatMessage):
-        """This event triggers whenever we get a new message from the user."""
-
-        if msg.message:
-            asyncio.create_task(_answer(msg.message, use_image=False))
-
-    @assistant.on("function_calls_finished")
-    def on_function_calls_finished(called_functions: list[agents.llm.CalledFunction]):
-        """This event triggers when an assistant's function call completes."""
-
-        if len(called_functions) == 0:
-            return
-
-        user_msg = called_functions[0].call_info.arguments.get("user_msg")
-        if user_msg:
-            asyncio.create_task(_answer(user_msg, use_image=True))
-
-    assistant.start(ctx.room)
-
-    await asyncio.sleep(1)
-    await assistant.say("Hi there! How can I help?", allow_interruptions=True)
-
-    while ctx.room.connection_state == rtc.ConnectionState.CONN_CONNECTED:
-        video_track = await get_video_track(ctx.room)
-
-        async for event in rtc.VideoStream(video_track):
-            # We'll continually grab the latest image from the video track
-            # and store it in a variable.
-            latest_image = event.frame
+def main() -> None:
+    if not ECHO_BASE_URL and not os.getenv("ANTHROPIC_API_KEY"):
+        raise SystemExit(
+            "Set ECHO_BASE_URL to route through ECHO, or ANTHROPIC_API_KEY to call "
+            "Anthropic directly. Copy .env.example to .env to configure."
+        )
+    asyncio.run(run())
 
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    main()

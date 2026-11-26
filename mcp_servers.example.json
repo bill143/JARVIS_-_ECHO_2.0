@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/data"]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "remote-example": {
+      "url": "https://example.com/mcp",
+      "transport": "http",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    }
+  }
+}

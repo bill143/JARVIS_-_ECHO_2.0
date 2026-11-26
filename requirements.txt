@@ -1,5 +1,18 @@
-livekit-agents~=0.8
-livekit-plugins-deepgram~=0.6
-livekit-plugins-openai~=0.7
-livekit-plugins-silero~=0.6
+# JARVIS & ECHO 2.0 — Pipecat + Claude, local voice stack.
+#
+# Pinned to the Pipecat 1.x line (resolves to 1.4.x) — the 1.x API differs a lot
+# from 0.x. If you bump the major, re-check the service imports (AnthropicLLMService
+# / OpenAILLMService / WhisperSTTService / KokoroTTSService) and the LLMContext /
+# LLMContextAggregatorPair API.
+pipecat-ai[anthropic,openai,whisper,kokoro,silero,webrtc,local,mcp]~=1.3
+
+# Pipecat 1.3's extras under-declare these transitive deps; without them even
+# pipecat.pipeline.task fails to import. Pin them explicitly.
+websockets~=13.1
+fastapi~=0.115
+uvicorn~=0.34
+
+# NOTE: opencv-python was removed with the vision quarantine (voice-only phase).
+# It lives with deferred/vision.py and returns when vision is back in scope.
+
 python-dotenv~=1.0

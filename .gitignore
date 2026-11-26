@@ -11,15 +11,22 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 
-# Downloaded model files (Silero VAD / turn detector)
+# Downloaded model files (Whisper / Kokoro / Silero)
 *.onnx
 *.pt
+models/
+.cache/
+# Hugging Face / model download caches
+.huggingface/
 
 # OS / editor noise
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+
+# Local Obsidian memory vault (JARVIS cross-session memory)
+memory_vault/
 
 # Claude Code harness folder (not part of the project)
 .remember/

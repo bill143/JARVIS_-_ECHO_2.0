@@ -1,0 +1,6 @@
+# Extra deps for the Supabase pgvector memory backend (MEMORY_BACKEND=supabase).
+# The default Obsidian backend needs none of these.
+supabase~=2.9
+# openai is already pulled in via pipecat-ai[openai]; listed here for standalone
+# use of the embeddings module.
+openai~=1.54
