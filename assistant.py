@@ -33,6 +33,7 @@ from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
+from pipecat.turns.user_mute import AlwaysUserMuteStrategy
 from pipecat.transports.local.audio import (
     LocalAudioTransport,
     LocalAudioTransportParams,
@@ -61,7 +62,9 @@ GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 # OpenAI-compatible API, so we point an OpenAILLMService at it.
 ECHO_BASE_URL = echo_base_url()  # e.g. http://localhost:4000/v1
 ECHO_API_KEY = real_secret("ECHO_API_KEY", "ECHO_MASTER_KEY")
-ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
+# Default: the free local Ollama alias in ECHO; set e.g. gemini-3.1-pro-preview
+# or tier-realtime to use a funded cloud model instead.
+ECHO_MODEL = (os.getenv("ECHO_MODEL") or "").strip() or "local-dev"
 ANTHROPIC_API_KEY = real_secret("ANTHROPIC_API_KEY")
 
 
@@ -176,6 +179,9 @@ async def run() -> None:
             # Pipecat's default would still run the LLM for it (and Anthropic rejects
             # a context with no user message). Never answer what the gate filtered.
             empty_user_turn=None,
+            # Desktop speakers bleed into the mic (it transcribed its own greeting
+            # as 'Any Jardis here'); ignore the mic while JARVIS is talking.
+            user_mute_strategies=[AlwaysUserMuteStrategy()],
         ),
     )
 

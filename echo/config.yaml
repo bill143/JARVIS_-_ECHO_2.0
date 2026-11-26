@@ -88,6 +88,20 @@ model_list:
       model: openai/gpt-4.1-mini
       api_key: os.environ/OPENAI_API_KEY
 
+  # Local / free (Ollama on this machine, RTX 5080). No key, no cost: JARVIS's
+  # default for development. Pull the model first: `ollama pull qwen2.5:14b-instruct`.
+  # When ECHO itself runs in Docker, point api_base at http://host.docker.internal:11434.
+  - model_name: local-dev
+    litellm_params:
+      model: ollama_chat/qwen2.5:14b-instruct
+      api_base: http://localhost:11434
+
+  # Groq free tier (cloud, fast): optional fallback for local-dev.
+  - model_name: groq-dev
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+
   # ---------------- 6 tier aliases (semantic routes) ----------------
   # Each tier points to a PRIMARY model; the fallback chain lives in
   # router_settings.fallbacks below.
@@ -140,6 +154,9 @@ router_settings:
     - google-gemini-flash: [openai-gpt4o-mini, anthropic-haiku]
     - google-gemini-flash-lite: [google-gemini-flash, openai-gpt4o-mini]
     - gemini-3.1-pro-preview: [google-gemini-25-pro, google-gemini-pro]
+    # Local first; paid clouds only as optional fallbacks when funded.
+    - local-dev: [groq-dev, gemini-3.1-pro-preview, anthropic-haiku]
+    - groq-dev: [local-dev]
     - deepseek-chat: [openai-gpt4o-mini, anthropic-haiku]
     - deepseek-reasoner: [openai-o3-mini, openai-o1]
     - xai-grok: [openai-gpt4o, anthropic-sonnet]

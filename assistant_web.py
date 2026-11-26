@@ -58,7 +58,9 @@ GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 # Route through ECHO (OpenAI-compatible) when configured, else Anthropic direct.
 ECHO_BASE_URL = echo_base_url()  # e.g. http://localhost:4000/v1
 ECHO_API_KEY = real_secret("ECHO_API_KEY", "ECHO_MASTER_KEY")
-ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
+# Default: the free local Ollama alias in ECHO; set e.g. gemini-3.1-pro-preview
+# or tier-realtime to use a funded cloud model instead.
+ECHO_MODEL = (os.getenv("ECHO_MODEL") or "").strip() or "local-dev"
 ANTHROPIC_API_KEY = real_secret("ANTHROPIC_API_KEY")
 
 
