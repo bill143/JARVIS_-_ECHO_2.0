@@ -175,10 +175,18 @@ def test_failed_look_reaches_the_dashboard() -> None:
 
 
 def test_looks_survive_interruptions() -> None:
+    """Looks stay synchronous (one clean answer) with a long enough timeout, and the
+    desktop build mutes the mic during tool calls so speech can't cancel them."""
+    from pathlib import Path
+
     llm = _FakeLLM()
     register_vision_tools(llm, "http://localhost:4000/v1", "test-key")
     for name in (LOOK_CAMERA_FUNCTION_NAME, LOOK_SCREEN_FUNCTION_NAME):
-        assert llm.options[name]["cancel_on_interruption"] is False, llm.options[name]
+        opts = llm.options[name]
+        assert opts.get("cancel_on_interruption") is not False, opts  # not async
+        assert opts["timeout_secs"] >= 120, opts
+    source = (Path(__file__).parent / "assistant.py").read_text(encoding="utf-8")
+    assert "FunctionCallUserMuteStrategy()" in source
 
 
 TESTS = [
@@ -192,7 +200,7 @@ TESTS = [
     ("capture falls back DSHOW -> MSMF", test_capture_falls_back_to_next_backend),
     ("capture errors are precise (busy / no picture / missing)", test_capture_errors_are_precise),
     ("failed look reaches the dashboard panel", test_failed_look_reaches_the_dashboard),
-    ("looks survive interruptions (not cancelled)", test_looks_survive_interruptions),
+    ("looks survive interruptions (mic muted during tools)", test_looks_survive_interruptions),
 ]
 
 if __name__ == "__main__":

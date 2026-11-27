@@ -293,20 +293,18 @@ def register_vision_tools(llm, base_url: str | None, api_key: str | None) -> lis
         model=(os.getenv("VISION_MODEL") or "").strip() or DEFAULT_VISION_MODEL,
     )
     camera_name = (os.getenv("CAMERA_NAME") or "").strip() or DEFAULT_CAMERA_NAME
-    # A look can take a while (capture + vision model). Don't let the user's next
-    # words ("hello? what do you see?") cancel it: Pipecat cancels in-flight
-    # function calls on interruption by default, which made JARVIS report a
-    # camera failure that never happened.
+    # A look can take a while (capture + vision model). The desktop build mutes
+    # the mic while any tool runs (FunctionCallUserMuteStrategy), so the user's
+    # next words can't cancel a look; the call stays synchronous, giving one
+    # clean answer instead of "still waiting for the image" filler.
     llm.register_function(
         LOOK_CAMERA_FUNCTION_NAME,
         _make_handler(lambda: capture_camera_jpeg(camera_name), "webcam", config),
-        cancel_on_interruption=False,
         timeout_secs=VISION_TIMEOUT_SECS + 30,
     )
     llm.register_function(
         LOOK_SCREEN_FUNCTION_NAME,
         _make_handler(capture_screen_jpeg, "screen", config),
-        cancel_on_interruption=False,
         timeout_secs=VISION_TIMEOUT_SECS + 30,
     )
     print(f"[JARVIS] Eyes: webcam '{camera_name}' + primary screen via {config.model}", flush=True)

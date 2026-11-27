@@ -33,7 +33,7 @@ from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
-from pipecat.turns.user_mute import AlwaysUserMuteStrategy
+from pipecat.turns.user_mute import AlwaysUserMuteStrategy, FunctionCallUserMuteStrategy
 from pipecat.transports.local.audio import (
     LocalAudioTransport,
     LocalAudioTransportParams,
@@ -251,8 +251,10 @@ async def run() -> None:
             # a context with no user message). Never answer what the gate filtered.
             empty_user_turn=None,
             # Desktop speakers bleed into the mic (it transcribed its own greeting
-            # as 'Any Jardis here'); ignore the mic while JARVIS is talking.
-            user_mute_strategies=[AlwaysUserMuteStrategy()],
+            # as 'Any Jardis here'); ignore the mic while JARVIS is talking, and
+            # while a tool runs, so "hello? what do you see?" during a slow look
+            # can't cancel it (Pipecat cancels in-flight calls on interruption).
+            user_mute_strategies=[AlwaysUserMuteStrategy(), FunctionCallUserMuteStrategy()],
         ),
     )
 

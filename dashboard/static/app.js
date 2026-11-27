@@ -196,7 +196,7 @@ async function loadMemory() {
       list.replaceChildren(el("li", "empty", "Memory is disabled (MEMORY_ENABLED=false)."));
       return;
     }
-    $("memory-total").textContent = `${data.total} facts`;
+    $("memory-total").textContent = `${data.total} ${data.total === 1 ? "fact" : "facts"}`;
     const badge = $("badge-memory");
     badge.textContent = String(data.total);
     badge.hidden = data.total === 0;
