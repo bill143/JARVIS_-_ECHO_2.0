@@ -100,15 +100,20 @@ model_list:
   # Groq free tier (cloud, fast): optional fallback for local-dev.
   - model_name: groq-dev
     litellm_params:
-      model: groq/llama-3.3-70b-versatile
+      model: groq/openai/gpt-oss-120b
+      # Reasoning model: keep thinking short so voice replies stay fast.
+      reasoning_effort: low
       api_key: os.environ/GROQ_API_KEY
       temperature: 0.3
 
-  # JARVIS's default brain: Groq free tier (llama-3.3-70b, strong tool use).
+  # JARVIS's default brain: Groq free tier (gpt-oss-120b, strong tool use). Groq stopped
+  # serving llama-3.3-70b-versatile to this key (model_not_found, Nov 2026).
   # Falls back to local-dev, then funded clouds once they have credits.
   - model_name: brain
     litellm_params:
-      model: groq/llama-3.3-70b-versatile
+      model: groq/openai/gpt-oss-120b
+      # Reasoning model: keep thinking short so voice replies stay fast.
+      reasoning_effort: low
       api_key: os.environ/GROQ_API_KEY
       # Groq's default temperature (1.0) occasionally emitted stray multilingual
       # junk tokens at the start of a spoken reply; a voice assistant wants 0.3.

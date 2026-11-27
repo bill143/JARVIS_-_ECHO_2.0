@@ -55,6 +55,12 @@ if (-not (Test-Port 11434)) {
         Show-Problem "Ollama is not installed. JARVIS will run, but without the local model and eyes."
     }
 }
+# Wait for Ollama to answer before ECHO/JARVIS need it (the brain's local fallback).
+if ((Test-Port 11434) -or (Get-Process -Name "ollama*" -ErrorAction SilentlyContinue)) {
+    if (-not (Wait-Http "http://127.0.0.1:11434/api/tags" 45)) {
+        Show-Problem "Ollama did not answer within 45 seconds; JARVIS has no local brain fallback or eyes."
+    }
+}
 
 # 2) ECHO (the model router) - reads its keys from echo\.env itself.
 if (-not (Test-Port 4000)) {

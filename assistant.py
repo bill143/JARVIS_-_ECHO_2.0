@@ -30,7 +30,6 @@ from pipecat.processors.aggregators.llm_response_universal import (
     LLMUserAggregatorParams,
 )
 from pipecat.services.anthropic.llm import AnthropicLLMService
-from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.turns.user_mute import FunctionCallUserMuteStrategy
@@ -41,10 +40,12 @@ from pipecat.transports.local.audio import (
     LocalAudioTransportParams,
 )
 
+from brain_guard import ValidatedOpenAILLMService
 from brain_config import echo_base_url, real_secret, resolve_echo_key
 from dashboard import EventBus
 from dashboard.runtime import start_dashboard
 from dashboard.taps import BotAudioTap, BotTap, HeardTap, MicState, MicTap, ToolTap, UserTap
+from hotkey import start_stop_hotkey
 from interrupt import EchoSafeVADUserTurnStartStrategy, InterruptSwitch, SpeechGuard
 from memory import build_memory, memory_enabled
 from people import PeopleStore
@@ -145,7 +146,8 @@ def build_llm():
                 "Add ECHO's key to your .env so JARVIS can authenticate to the proxy."
             )
         print(f"[JARVIS] Brain: ECHO -> {ECHO_BASE_URL} (model {ECHO_MODEL})", flush=True)
-        return OpenAILLMService(
+        # Validates/retries the reply after a tool call (no empty or non-English answers).
+        return ValidatedOpenAILLMService(
             base_url=ECHO_BASE_URL,
             api_key=ECHO_API_KEY,
             model=ECHO_MODEL,
@@ -322,7 +324,10 @@ async def run() -> None:
     )
 
     wake_gate = WakeWordProcessor(gate_from_env())
-    stop_switch = InterruptSwitch(on_interrupt=lambda reason: bus.publish("interrupted", reason=reason))
+    stop_switch = InterruptSwitch(
+        on_interrupt=lambda reason: bus.publish("interrupted", reason=reason),
+        on_measured=lambda event: bus.publish("stop_measured", **event),
+    )
     speech_guard = SpeechGuard(stop_switch)
 
     pipeline = Pipeline(
@@ -354,6 +359,9 @@ async def run() -> None:
         idle_timeout_secs=None,
     )
 
+    # Global stop hotkey (default Ctrl+Alt+S): stops JARVIS speaking from any window.
+    stop_hotkey = start_stop_hotkey(lambda: stop_switch.trigger("hotkey"))
+
     # The dashboard window (http://127.0.0.1:8090). Optional: voice works without it.
     if os.getenv("DASHBOARD_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:
         await start_dashboard(
@@ -374,7 +382,11 @@ async def run() -> None:
     await task.queue_frames([TTSSpeakFrame(GREETING)])
 
     runner = PipelineRunner(handle_sigint=True)
-    await runner.run(task)
+    try:
+        await runner.run(task)
+    finally:
+        if stop_hotkey is not None:
+            stop_hotkey.stop()
 
 
 def main() -> None:

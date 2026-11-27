@@ -31,13 +31,13 @@ from pipecat.processors.aggregators.llm_response_universal import (
 )
 from pipecat.runner.types import RunnerArguments
 from pipecat.services.anthropic.llm import AnthropicLLMService
-from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 from wakeword import WakeWordProcessor, gate_from_env
+from brain_guard import ValidatedOpenAILLMService
 from brain_config import echo_base_url, real_secret, resolve_echo_key
 from memory_tools import register_memory_tools
 from time_tools import register_time_tools
@@ -75,7 +75,8 @@ def build_llm():
                 "Add ECHO's key to your .env so JARVIS can authenticate to the proxy."
             )
         print(f"[JARVIS] Brain: ECHO -> {ECHO_BASE_URL} (model {ECHO_MODEL})", flush=True)
-        return OpenAILLMService(
+        # Validates/retries the reply after a tool call (no empty or non-English answers).
+        return ValidatedOpenAILLMService(
             base_url=ECHO_BASE_URL,
             api_key=ECHO_API_KEY,
             model=ECHO_MODEL,

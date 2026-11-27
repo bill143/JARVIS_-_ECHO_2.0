@@ -11,7 +11,9 @@ from pipecat.frames.frames import BotStartedSpeakingFrame, BotStoppedSpeakingFra
 from pipecat.tests.utils import run_test
 
 import interrupt
-from interrupt import SpeechGuard, is_stop_command
+import time
+
+from interrupt import InterruptSwitch, SpeechGuard, is_stop_command
 
 
 def _t(text: str) -> TranscriptionFrame:
@@ -25,6 +27,9 @@ class FakeSwitch:
     async def trigger(self, reason: str = "button") -> float:
         self.reasons.append(reason)
         return 0.0
+
+    def note_user_turn(self) -> None:
+        return None
 
 
 def test_stop_commands() -> None:
@@ -89,11 +94,35 @@ def test_echo_does_not_start_a_user_turn() -> None:
     asyncio.run(scenario())
 
 
+def test_switch_measures_cut_and_flags_restart() -> None:
+    events: list[dict] = []
+    switch = InterruptSwitch(on_measured=events.append)
+    switch._pending = ("hotkey", time.monotonic())  # as trigger() leaves it
+    asyncio.run(run_test(
+        switch,
+        frames_to_send=[BotStoppedSpeakingFrame(), BotStartedSpeakingFrame()],
+        expected_down_frames=[BotStoppedSpeakingFrame, BotStartedSpeakingFrame],
+    ))
+    assert [e["kind"] for e in events] == ["cut", "restart"], events
+    assert events[0]["reason"] == "hotkey" and 0 <= events[0]["cut_ms"] < 1000, events
+
+
+def test_switch_no_restart_flag_after_user_turn() -> None:
+    events: list[dict] = []
+    switch = InterruptSwitch(on_measured=events.append)
+    switch._watch = ("button", time.monotonic())  # as a measured stop leaves it
+    switch.note_user_turn()  # the user asked something new: a reply is expected
+    asyncio.run(run_test(switch, frames_to_send=[BotStartedSpeakingFrame()],
+                         expected_down_frames=[BotStartedSpeakingFrame]))
+    assert events == [], events
+
 TESTS = [
     ("stop command matching", test_stop_commands),
     ("guard drops echo, spoken stop interrupts", test_guard_drops_echo_and_stops_on_command),
     ("guard passes real speech when JARVIS is quiet", test_guard_passes_speech_when_quiet),
     ("JARVIS's own voice never starts a user turn", test_echo_does_not_start_a_user_turn),
+    ("stop measures the audio cut and flags an unprompted restart", test_switch_measures_cut_and_flags_restart),
+    ("speaking after a new user turn is not flagged", test_switch_no_restart_flag_after_user_turn),
 ]
 
 if __name__ == "__main__":

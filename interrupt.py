@@ -49,20 +49,61 @@ def is_stop_command(text: str) -> bool:
     return all(w in _STOP_WORDS or w in _FILLER for w in words)
 
 
-class InterruptSwitch(FrameProcessor):
-    """Pass-through processor that can interrupt the whole pipeline on demand."""
+RESTART_WATCH_SECS = 5.0  # speech starting again this soon after a stop, unprompted, is a bug
+CUT_MEASURE_SECS = 3.0  # a stop pressed while JARVIS is quiet is not measured
 
-    def __init__(self, on_interrupt: Callable[[str], None] | None = None, **kwargs) -> None:
+
+class InterruptSwitch(FrameProcessor):
+    """Pass-through processor that can interrupt the whole pipeline on demand.
+
+    It also measures each stop: the time from the request to the output
+    transport's ``BotStoppedSpeakingFrame`` (audio actually cut), and flags speech
+    that starts again within ``RESTART_WATCH_SECS`` without a new user turn.
+    """
+
+    def __init__(self, on_interrupt: Callable[[str], None] | None = None,
+                 on_measured: Callable[[dict], None] | None = None, **kwargs) -> None:
         super().__init__(**kwargs)
         self._on_interrupt = on_interrupt
+        self._on_measured = on_measured
+        self._pending: tuple[str, float] | None = None  # (reason, requested) awaiting the audio cut
+        self._watch: tuple[str, float] | None = None  # (reason, cut_at) watching for a restart
+
+    def _report(self, **event) -> None:
+        if self._on_measured:
+            self._on_measured(event)
 
     async def process_frame(self, frame: Frame, direction: FrameDirection) -> None:
         await super().process_frame(frame, direction)
+        now = time.monotonic()
+        if isinstance(frame, BotStoppedSpeakingFrame) and self._pending:
+            reason, requested = self._pending
+            self._pending = None
+            if now - requested > CUT_MEASURE_SECS:
+                await self.push_frame(frame, direction)
+                return
+            cut_ms = round((now - requested) * 1000)
+            print(f"[JARVIS] Stop ({reason}): audio cut {cut_ms} ms after the request", flush=True)
+            self._report(kind="cut", reason=reason, cut_ms=cut_ms)
+            self._watch = (reason, now)
+        elif isinstance(frame, BotStartedSpeakingFrame) and self._watch:
+            reason, cut_at = self._watch
+            self._watch = None
+            if now - cut_at < RESTART_WATCH_SECS:
+                after_ms = round((now - cut_at) * 1000)
+                print(f"[JARVIS] WARNING: speech restarted {after_ms} ms after a stop ({reason})", flush=True)
+                self._report(kind="restart", reason=reason, after_ms=after_ms)
         await self.push_frame(frame, direction)
+
+    def note_user_turn(self) -> None:
+        """A real user request got through (SpeechGuard): a reply is expected now."""
+        self._watch = None
 
     async def trigger(self, reason: str = "button") -> float:
         """Interrupt now; returns the monotonic time it was requested."""
         requested = time.monotonic()
+        self._pending = (reason, requested)
+        self._watch = None
         print(f"[JARVIS] Stop requested ({reason})", flush=True)
         if self._on_interrupt:
             self._on_interrupt(reason)
@@ -99,6 +140,7 @@ class SpeechGuard(FrameProcessor):
                 if self._on_dropped:
                     self._on_dropped(frame.text)
                 return  # JARVIS hearing itself: drop
+            self._switch.note_user_turn()
         await self.push_frame(frame, direction)
 
 
