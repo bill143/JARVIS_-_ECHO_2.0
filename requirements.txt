@@ -22,3 +22,10 @@ python-dotenv~=1.0
 opencv-python-headless>=4.10
 cv2-enumerate-cameras~=1.4
 mss~=10.2
+
+# People: offline face recognition (dlib ResNet, CPU). dlib-bin is the prebuilt
+# Windows/Linux wheel (no compiler); face_recognition_models ships the weights and
+# still imports pkg_resources, which setuptools>=81 removed.
+dlib-bin~=20.0
+face_recognition_models==0.3.0
+setuptools<81

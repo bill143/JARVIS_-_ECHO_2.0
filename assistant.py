@@ -47,6 +47,9 @@ from dashboard.runtime import start_dashboard
 from dashboard.taps import BotAudioTap, BotTap, HeardTap, MicState, MicTap, ToolTap, UserTap
 from interrupt import InterruptSwitch, SpeechGuard
 from memory import build_memory, memory_enabled
+from people import PeopleStore
+from people_tools import people_index, register_people_tools
+from vision_tools import set_face_hook
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
 from time_tools import register_time_tools
@@ -152,7 +155,7 @@ def build_llm():
     )
 
 
-def system_prompt() -> str:
+def system_prompt(people_line: str = "") -> str:
     return (
         f"Your name is {ASSISTANT_NAME}. You are a witty, helpful voice assistant. "
         "Think the problem through step by step silently before you answer, but only "
@@ -162,7 +165,10 @@ def system_prompt() -> str:
         "get_current_time for the time or date; remember and recall for anything the "
         "user wants kept or asks you to remember; look_camera when they say things like "
         "'what do you see' or 'look at this'; look_screen when they ask what is on "
-        "their screen. Answer from what the tools return."
+        "their screen; lookup_person / list_people for anyone the user knows. "
+        "Answer from what the tools return. When a look names a recognized person, use "
+        "that name; never guess who someone is."
+        + (f" {people_line}" if people_line else "")
     )
 
 
@@ -195,6 +201,34 @@ def report_microphone() -> str:
         return "unknown"
     finally:
         pa.terminate()
+
+
+def _people_store():
+    """Local people store (SQLite + photos), mirrored into the Obsidian vault if one is set."""
+    if os.getenv("PEOPLE_ENABLED", "true").strip().lower() not in {"1", "true", "yes", "on"}:
+        return None
+    vault = None
+    if os.getenv("MEMORY_BACKEND", "obsidian").strip().lower() == "obsidian":
+        vault = os.getenv("OBSIDIAN_VAULT_PATH", "./memory_vault")
+    try:
+        store = PeopleStore(vault=vault)
+    except Exception as exc:  # people are optional; voice keeps working
+        print(f"[JARVIS] People store disabled: {exc}", flush=True)
+        return None
+    print(f"[JARVIS] People: {len(store.list())} known, stored in {store.dir}", flush=True)
+    return store
+
+
+def _face_hook(store):
+    """look_camera -> "I see Mike (confidence 0.71)." using only enrolled photos, offline."""
+
+    def hook(jpeg: bytes):
+        from people.faces import decode_image, describe_faces, recognize  # heavy; loaded on first look
+
+        known = store.encodings()
+        return describe_faces(recognize(decode_image(jpeg), known))
+
+    return hook
 
 
 def _dashboard_memory():
@@ -230,17 +264,21 @@ async def run() -> None:
     # Cross-session memory (remember/recall) and any configured MCP servers.
     mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
     vision_schemas = register_vision_tools(llm, ECHO_BASE_URL, ECHO_API_KEY)
+    people = _people_store()
+    if people is not None and vision_schemas:
+        set_face_hook(_face_hook(people))
     tools = ToolsSchema(
         standard_tools=[
             *register_time_tools(llm),
             *register_memory_tools(llm),
             *vision_schemas,
+            *register_people_tools(llm, people),
             *mcp_schemas,
         ]
     )
 
     context = LLMContext(
-        messages=[{"role": "system", "content": system_prompt()}],
+        messages=[{"role": "system", "content": system_prompt(people_index(people))}],
         tools=tools,
     )
     # Pipecat 1.x runs VAD in the user aggregator; TransportParams no longer has a
@@ -314,6 +352,7 @@ async def run() -> None:
             vision_model=(os.getenv("VISION_MODEL") or "vision-dev") if vision_schemas else None,
             memory=_dashboard_memory(),
             stop_switch=stop_switch,
+            people=people,
         )
 
     # Greet on startup.

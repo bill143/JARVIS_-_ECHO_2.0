@@ -21,12 +21,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from dashboard.bus import EventBus
+from dashboard.memory_api import add_memory_routes
 
 logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent / "static"
 TOKEN_HEADER = "X-JARVIS-Token"
 TOKEN_PLACEHOLDER = "__JARVIS_TOKEN__"
+STATIC_ASSETS = ("app.css", "app.js", "memory.css", "memory.js")
 MAX_SAY_CHARS = 2000
 MEMORY_LIMIT_MAX = 200
 
@@ -80,6 +82,7 @@ def create_app(
     controller: DashboardController,
     memory=None,
     *,
+    people=None,
     port: int = 8090,
     token: str | None = None,
 ) -> FastAPI:
@@ -98,18 +101,18 @@ def create_app(
             return _err("BAD_HOST", "Unknown host.", 403)
         return await call_next(request)
 
-    @app.get("/", response_class=HTMLResponse)
-    async def index() -> HTMLResponse:
-        html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    def render_page(filename: str) -> HTMLResponse:
+        html = (STATIC_DIR / filename).read_text(encoding="utf-8")
         # Cache-bust assets so an updated JARVIS never runs a stale cached UI.
-        for asset in ("app.css", "app.js"):
-            version = int((STATIC_DIR / asset).stat().st_mtime)
-            html = html.replace(f"/static/{asset}\"", f"/static/{asset}?v={version}\"")
+        for asset in STATIC_ASSETS:
+            if f"/static/{asset}\"" in html:
+                version = int((STATIC_DIR / asset).stat().st_mtime)
+                html = html.replace(f"/static/{asset}\"", f"/static/{asset}?v={version}\"")
         ws_sources = " ".join(f"ws://{h}" for h in sorted(allowed_hosts))
         headers = {
             "Cache-Control": "no-store",
             "Content-Security-Policy": (
-                "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+                "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; "
                 f"connect-src 'self' {ws_sources}; frame-ancestors 'none'; base-uri 'none'; "
                 "form-action 'self'; object-src 'none'"
             ),
@@ -119,7 +122,14 @@ def create_app(
         }
         return HTMLResponse(html.replace(TOKEN_PLACEHOLDER, token), headers=headers)
 
+    @app.get("/", response_class=HTMLResponse)
+    async def index() -> HTMLResponse:
+        return render_page("index.html")
+
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    add_memory_routes(
+        app, authorized=_authorized, ok=_ok, err=_err, render_page=render_page, memory=memory, people=people
+    )
 
     @app.get("/api/state")
     async def state(request: Request):

@@ -64,6 +64,34 @@ class ObsidianMemory(MemoryStore):
         path = self.vault / f"{record.created_at[:10]}-{record.id[:8]}.md"
         path.write_text("\n".join(lines), encoding="utf-8")
 
+    def _path_for(self, record_id: str) -> Path | None:
+        for path in self.vault.glob(f"*-{record_id[:8]}.md"):
+            rec = self._read(path)
+            if rec is not None and rec.id == record_id and _is_jarvis_memory(rec, path):
+                return path
+        return None
+
+    # ---- editing (dashboard Facts tab) ----
+    def update(self, record_id: str, text: str) -> MemoryRecord:
+        """Replace a memory's text, keeping its id, timestamp and metadata."""
+        text = (text or "").strip()
+        if not text:
+            raise ValueError("cannot store an empty memory")
+        path = self._path_for(record_id)
+        if path is None:
+            raise KeyError(record_id)
+        current = self._read(path)
+        updated = MemoryRecord(id=current.id, text=text, created_at=current.created_at, metadata=current.metadata)
+        self._write(updated)
+        return updated
+
+    def delete(self, record_id: str) -> None:
+        """Remove a memory note written by JARVIS (never touches other notes)."""
+        path = self._path_for(record_id)
+        if path is None:
+            raise KeyError(record_id)
+        path.unlink()
+
     # ---- reading ----
     def _read(self, path: Path) -> MemoryRecord | None:
         try:

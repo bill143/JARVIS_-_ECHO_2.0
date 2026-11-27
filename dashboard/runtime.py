@@ -24,7 +24,7 @@ from dashboard.health import HealthMonitor, load_fallbacks
 from dashboard.server import create_app
 from dashboard.taps import MicState
 from dashboard.window import open_app_window
-from vision_tools import add_seen_listener
+from vision_tools import add_seen_listener, set_face_hook
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +94,7 @@ async def start_dashboard(
     vision_model: str | None,
     memory=None,
     stop_switch=None,
+    people=None,
 ) -> JarvisController | None:
     """Start the dashboard server (+ health checks, + app window). Never raises:
     if the dashboard can't start, JARVIS keeps working voice-only."""
@@ -113,7 +114,7 @@ async def start_dashboard(
     add_seen_listener(on_seen)
 
     try:
-        app = create_app(bus, controller, memory, port=port)
+        app = create_app(bus, controller, memory, people=people, port=port)
         server = uvicorn.Server(
             uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", ws="websockets")
         )

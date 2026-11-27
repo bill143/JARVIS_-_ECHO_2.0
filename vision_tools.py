@@ -266,13 +266,38 @@ def _make_handler(capture, source: str, config: VisionConfig):
                 {"error": f"The vision model could not look at the {source}. Tell the user briefly."}
             )
             return
+        people = await _recognize_people(jpeg) if source == "webcam" else None
+        if people:
+            description = f"{people} {description}"
         print(f"[JARVIS] Saw ({source}, {len(jpeg)} bytes): {description!r}", flush=True)
         _notify_seen(source, description, jpeg)
-        await params.result_callback(
-            {"source": source, "description": description, "note": "Answer the user from this."}
-        )
+        result = {"source": source, "description": description, "note": "Answer the user from this."}
+        if people:
+            result["people"] = people
+            result["note"] = "Answer the user from this. Name recognized people as given; never guess names."
+        await params.result_callback(result)
 
     return handler
+
+
+# Optional offline face recognition for webcam looks: fn(jpeg) -> sentence | None.
+_FACE_HOOK = None
+
+
+def set_face_hook(hook) -> None:
+    """Install ``hook(jpeg_bytes) -> str | None`` (e.g. "I see Mike (confidence 0.71).")."""
+    global _FACE_HOOK
+    _FACE_HOOK = hook
+
+
+async def _recognize_people(jpeg: bytes) -> str | None:
+    if _FACE_HOOK is None:
+        return None
+    try:
+        return await asyncio.to_thread(_FACE_HOOK, jpeg)
+    except Exception as exc:  # recognition is a bonus; the look still answers
+        logger.warning("face recognition failed: %s", exc)
+        return None
 
 
 def register_vision_tools(llm, base_url: str | None, api_key: str | None) -> list[FunctionSchema]:

@@ -332,7 +332,7 @@ $("clear-btn").addEventListener("click", () => { $("transcript").replaceChildren
 $("show-ambient").addEventListener("change", (e) => $("transcript").classList.toggle("show-ambient", e.target.checked));
 $("memory-search").addEventListener("input", () => { clearTimeout(memoryTimer); memoryTimer = setTimeout(loadMemory, 250); });
 
-document.querySelectorAll(".nav-item").forEach((a) => a.addEventListener("click", (e) => {
+document.querySelectorAll(".nav-item[data-target]").forEach((a) => a.addEventListener("click", (e) => {
   e.preventDefault();
   document.querySelectorAll(".nav-item").forEach((n) => n.classList.toggle("active", n === a));
   $(a.dataset.target).scrollIntoView({ behavior: "smooth", block: "start" });
