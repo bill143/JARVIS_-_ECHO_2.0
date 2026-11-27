@@ -41,6 +41,7 @@ from wakeword import WakeWordProcessor, gate_from_env
 from brain_config import echo_base_url, real_secret
 from memory_tools import register_memory_tools
 from time_tools import register_time_tools
+from vision_tools import register_vision_tools
 from mcp_tools import register_mcp_tools
 
 load_dotenv()
@@ -59,9 +60,9 @@ GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 # Route through ECHO (OpenAI-compatible) when configured, else Anthropic direct.
 ECHO_BASE_URL = echo_base_url()  # e.g. http://localhost:4000/v1
 ECHO_API_KEY = real_secret("ECHO_API_KEY", "ECHO_MASTER_KEY")
-# Default: the free local Ollama alias in ECHO; set e.g. gemini-3.1-pro-preview
+# Default: ECHO's free 'brain' alias (Groq -> local Ollama -> paid clouds); set e.g. gemini-3.1-pro-preview
 # or tier-realtime to use a funded cloud model instead.
-ECHO_MODEL = (os.getenv("ECHO_MODEL") or "").strip() or "local-dev"
+ECHO_MODEL = (os.getenv("ECHO_MODEL") or "").strip() or "brain"
 ANTHROPIC_API_KEY = real_secret("ANTHROPIC_API_KEY")
 
 
@@ -89,8 +90,14 @@ def build_llm():
 def system_prompt() -> str:
     return (
         f"Your name is {ASSISTANT_NAME}. You are a witty, helpful voice assistant. "
-        "Your interface with the user is voice. Keep answers short and "
-        "conversational. Avoid unpronounceable punctuation, markdown, and emojis."
+        "Think the problem through step by step silently before you answer, but only "
+        "ever SAY the short conclusion: one to three conversational sentences. "
+        "Your interface with the user is voice, so avoid unpronounceable punctuation, "
+        "markdown, lists, and emojis. Use your tools instead of guessing: "
+        "get_current_time for the time or date; remember and recall for anything the "
+        "user wants kept or asks you to remember; look_camera when they say things like "
+        "'what do you see' or 'look at this'; look_screen when they ask what is on "
+        "their screen. Answer from what the tools return."
     )
 
 
@@ -104,7 +111,12 @@ async def run_bot(transport: BaseTransport) -> None:
     # Cross-session memory (remember/recall) and any configured MCP servers.
     mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
     tools = ToolsSchema(
-        standard_tools=[*register_time_tools(llm), *register_memory_tools(llm), *mcp_schemas]
+        standard_tools=[
+            *register_time_tools(llm),
+            *register_memory_tools(llm),
+            *register_vision_tools(llm, ECHO_BASE_URL, ECHO_API_KEY),
+            *mcp_schemas,
+        ]
     )
 
     context = LLMContext(

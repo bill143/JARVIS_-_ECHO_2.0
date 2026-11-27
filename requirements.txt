@@ -16,3 +16,9 @@ uvicorn~=0.34
 # It lives with deferred/vision.py and returns when vision is back in scope.
 
 python-dotenv~=1.0
+
+# JARVIS eyes (vision_tools.py): webcam capture (by device name) + screenshots.
+# Headless OpenCV: capture/encode only, no GUI libs (Docker-safe).
+opencv-python-headless>=4.10
+cv2-enumerate-cameras~=1.4
+mss~=10.2
