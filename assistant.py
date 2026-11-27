@@ -34,7 +34,7 @@ from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
 from pipecat.turns.user_mute import FunctionCallUserMuteStrategy
-from pipecat.turns.user_start import TranscriptionUserTurnStartStrategy, VADUserTurnStartStrategy
+from pipecat.turns.user_start import TranscriptionUserTurnStartStrategy
 from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.transports.local.audio import (
     LocalAudioTransport,
@@ -45,7 +45,7 @@ from brain_config import echo_base_url, real_secret, resolve_echo_key
 from dashboard import EventBus
 from dashboard.runtime import start_dashboard
 from dashboard.taps import BotAudioTap, BotTap, HeardTap, MicState, MicTap, ToolTap, UserTap
-from interrupt import InterruptSwitch, SpeechGuard
+from interrupt import EchoSafeVADUserTurnStartStrategy, InterruptSwitch, SpeechGuard
 from memory import build_memory, memory_enabled
 from people import PeopleStore
 from toolbox.runtime import ToolboxRuntime
@@ -313,7 +313,7 @@ async def run() -> None:
             # drops everything else heard while he talks (echo).
             user_turn_strategies=UserTurnStrategies(
                 start=[
-                    VADUserTurnStartStrategy(enable_interruptions=False),
+                    EchoSafeVADUserTurnStartStrategy(enable_interruptions=False),
                     TranscriptionUserTurnStartStrategy(enable_interruptions=False),
                 ]
             ),

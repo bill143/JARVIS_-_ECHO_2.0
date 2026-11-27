@@ -21,8 +21,10 @@ from pipecat.frames.frames import (
     BotStoppedSpeakingFrame,
     Frame,
     TranscriptionFrame,
+    VADUserStartedSpeakingFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
+from pipecat.turns.user_start import VADUserTurnStartStrategy
 
 from wakeword import _word_matches
 
@@ -98,3 +100,31 @@ class SpeechGuard(FrameProcessor):
                     self._on_dropped(frame.text)
                 return  # JARVIS hearing itself: drop
         await self.push_frame(frame, direction)
+
+
+class EchoSafeVADUserTurnStartStrategy(VADUserTurnStartStrategy):
+    """VAD turn start that ignores JARVIS's own voice coming back through the mic.
+
+    While the bot speaks (+ echo tail) a VAD "user started" is echo: starting a
+    user turn on it left an empty, never-finished turn that blocked the brain's
+    follow-up answer (e.g. after a tool call). VAD frames still reach Whisper, so a
+    spoken "stop" is still transcribed and handled by ``SpeechGuard``.
+    """
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._speaking = False
+        self._quiet_since = 0.0
+
+    def _bot_is_talking(self) -> bool:
+        return self._speaking or (time.monotonic() - self._quiet_since) < ECHO_TAIL_SECS
+
+    async def process_frame(self, frame: Frame):
+        if isinstance(frame, BotStartedSpeakingFrame):
+            self._speaking = True
+        elif isinstance(frame, BotStoppedSpeakingFrame):
+            self._speaking = False
+            self._quiet_since = time.monotonic()
+        elif isinstance(frame, VADUserStartedSpeakingFrame) and self._bot_is_talking():
+            return None  # echo of the bot's own voice: not a user turn
+        return await super().process_frame(frame)

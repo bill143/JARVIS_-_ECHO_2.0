@@ -66,10 +66,34 @@ def test_guard_passes_speech_when_quiet() -> None:
     assert switch.reasons == [], "a stop with nothing playing must not interrupt"
 
 
+def test_echo_does_not_start_a_user_turn() -> None:
+    from pipecat.frames.frames import VADUserStartedSpeakingFrame
+
+    strategy = interrupt.EchoSafeVADUserTurnStartStrategy(enable_interruptions=False)
+    started = []
+
+    async def fake_report(*_a, **_k):
+        started.append(True)
+
+    strategy.report_user_turn_started = fake_report
+
+    async def scenario():
+        await strategy.process_frame(BotStartedSpeakingFrame())
+        await strategy.process_frame(VADUserStartedSpeakingFrame())  # echo while talking
+        assert started == [], "echo started a user turn"
+        await strategy.process_frame(BotStoppedSpeakingFrame())
+        strategy._quiet_since -= interrupt.ECHO_TAIL_SECS + 0.1  # tail elapsed
+        await strategy.process_frame(VADUserStartedSpeakingFrame())  # the user, after JARVIS stopped
+        assert started == [True]
+
+    asyncio.run(scenario())
+
+
 TESTS = [
     ("stop command matching", test_stop_commands),
     ("guard drops echo, spoken stop interrupts", test_guard_drops_echo_and_stops_on_command),
     ("guard passes real speech when JARVIS is quiet", test_guard_passes_speech_when_quiet),
+    ("JARVIS's own voice never starts a user turn", test_echo_does_not_start_a_user_turn),
 ]
 
 if __name__ == "__main__":
