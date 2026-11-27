@@ -5,97 +5,124 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="jarvis-token" content="__JARVIS_TOKEN__">
   <title>JARVIS</title>
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/home.css">
 </head>
-<body>
-  <header class="topbar">
-    <div class="brand"><span class="brand-dot" id="brand-dot"></span><span class="brand-name">JARVIS</span>
-      <span class="brand-sub">Command Console</span></div>
-    <div class="topbar-right">
-      <label class="model-pick" for="model-select"><span class="label">Brain</span>
-        <select id="model-select" aria-label="Brain model"></select></label>
-      <span class="conn" id="conn" role="status">Connecting…</span>
-      <time class="clock mono" id="clock"></time>
-    </div>
-  </header>
+<body class="home" data-state="starting">
+  <canvas id="sphere" class="sphere" aria-hidden="true"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
 
-  <nav class="sidebar" aria-label="Sections">
-    <a class="nav-item active" href="#card-status" data-target="card-status">Overview</a>
-    <a class="nav-item" href="#card-conversation" data-target="card-conversation">Conversation
-      <span class="badge" id="badge-conversation" hidden>0</span></a>
-    <a class="nav-item" href="#card-vision" data-target="card-vision">Vision</a>
-    <a class="nav-item" href="/tools">Skills &amp; Tools</a>
-    <a class="nav-item" href="/memory">Memory &amp; People
-      <span class="badge" id="badge-memory" hidden>0</span></a>
-    <a class="nav-item" href="#card-health" data-target="card-health">System</a>
+  <!-- Top left: floating icon toolbar -->
+  <nav class="toolbar" aria-label="Quick controls">
+    <button class="tb" id="tb-mic" type="button" aria-pressed="false" aria-label="Mute microphone" title="Mute microphone">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3M8 22h8"/><path class="slash" d="M3 3l18 18"/></svg>
+    </button>
+    <button class="tb" id="tb-screen" type="button" aria-label="Look at screen" title="Look at screen">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    </button>
+    <button class="tb" id="tb-camera" type="button" aria-label="Look via camera" title="Look via camera">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg>
+    </button>
+    <a class="tb" id="tb-files" href="/tools" aria-label="Documents, skills and tools" title="Documents, skills &amp; tools">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    </a>
+    <span class="tb-sep" aria-hidden="true"></span>
+    <button class="tb" id="tb-chat" type="button" aria-pressed="false" aria-controls="chat" aria-label="Conversation" title="Conversation">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
   </nav>
 
-  <main class="grid">
-    <section class="card card-status" id="card-status" aria-labelledby="h-status">
-      <div class="card-head"><span class="card-icon">◉</span><h2 id="h-status">Status</h2>
-        <span class="state-pill" id="state-pill">Starting</span></div>
-      <div class="orb-wrap"><canvas id="orb" width="320" height="320" aria-hidden="true"></canvas></div>
-      <div class="mic-row">
-        <div class="mic-meta"><span class="label">Microphone</span>
-          <span class="mic-name" id="mic-name">—</span></div>
-        <div class="wave" id="wave" aria-label="Microphone level" role="meter"
-             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
-      </div>
+  <!-- Top right: watermark, clock, date -->
+  <header class="signature" aria-label="Clock">
+    <div class="watermark" aria-hidden="true">JARVIS</div>
+    <time class="clock" id="clock">--:--</time>
+    <div class="date" id="date"></div>
+  </header>
+
+  <!-- Status line under the sphere -->
+  <div class="status" role="status" aria-live="polite">
+    <span class="conn-dot" id="conn-dot" aria-hidden="true"></span>
+    <span id="conn-label">Connecting</span>
+    <span class="status-sep" aria-hidden="true">·</span>
+    <span id="state-label">Starting</span>
+  </div>
+
+  <!-- Latest exchange caption -->
+  <section class="caption" id="caption" aria-live="polite" aria-label="Latest exchange" hidden>
+    <p class="cap-user" id="cap-user"></p>
+    <p class="cap-reply" id="cap-reply"></p>
+  </section>
+
+  <!-- Stop speaking: appears while he talks or thinks -->
+  <button class="stop" id="stop" type="button" hidden aria-label="Stop speaking (Esc or Ctrl+Alt+S)">
+    <span class="stop-sq" aria-hidden="true"></span> Stop <kbd>Esc</kbd>
+  </button>
+
+  <!-- Conversation panel -->
+  <aside class="chat" id="chat" aria-label="Conversation" hidden>
+    <div class="panel-head"><h2>Conversation</h2>
+      <button class="icon-btn" id="chat-close" type="button" aria-label="Close conversation">✕</button></div>
+    <ol class="transcript" id="transcript"></ol>
+    <form class="say" id="say-form" autocomplete="off">
+      <label class="sr-only" for="say-input">Type to JARVIS</label>
+      <input id="say-input" maxlength="2000" placeholder="Type to JARVIS…">
+      <button type="submit" class="btn">Send</button>
+    </form>
+  </aside>
+
+  <!-- Bottom left: Mission Control -->
+  <button class="mc-pill" id="mc-pill" type="button" aria-controls="mc" aria-expanded="false">
+    <span class="mc-dot" aria-hidden="true"></span> MISSION CONTROL <kbd>Ctrl M</kbd>
+  </button>
+
+  <aside class="mc" id="mc" aria-label="Mission Control" hidden>
+    <div class="panel-head"><h2>Mission Control</h2>
+      <button class="icon-btn" id="mc-close" type="button" aria-label="Close Mission Control">✕</button></div>
+
+    <section class="mc-sec">
+      <h3>Status</h3>
+      <dl class="kv">
+        <dt>State</dt><dd id="mc-state">—</dd>
+        <dt>Microphone</dt><dd id="mc-mic">—</dd>
+        <dt>Connection</dt><dd id="mc-conn">—</dd>
+      </dl>
     </section>
 
-    <section class="card card-conversation" id="card-conversation" aria-labelledby="h-conv">
-      <div class="card-head"><span class="card-icon">≋</span><h2 id="h-conv">Conversation</h2>
-        <label class="toggle"><input type="checkbox" id="show-ambient"> Show ignored speech</label></div>
-      <ol class="transcript" id="transcript" aria-live="polite"></ol>
-      <form class="say" id="say-form" autocomplete="off">
-        <label class="sr-only" for="say-input">Type to JARVIS</label>
-        <input id="say-input" maxlength="2000" placeholder="Type to JARVIS — the reply is spoken and shown here">
-        <button type="submit" class="btn">Send</button>
-      </form>
-    </section>
-
-    <section class="card card-vision" id="card-vision" aria-labelledby="h-vision">
-      <div class="card-head"><span class="card-icon">◎</span><h2 id="h-vision">Last thing JARVIS saw</h2></div>
-      <div class="vision-frame"><img id="vision-img" alt="" hidden>
-        <p class="vision-empty" id="vision-empty">Nothing yet. Ask “what do you see?” or press Look.</p></div>
-      <p class="vision-desc" id="vision-desc"></p>
-      <div class="row-btns">
-        <button class="btn" id="look-camera" type="button">Look (camera)</button>
-        <button class="btn" id="look-screen" type="button">Look (screen)</button>
-      </div>
-    </section>
-
-    <section class="card card-brain" id="card-brain" aria-labelledby="h-brain">
-      <div class="card-head"><span class="card-icon">⌬</span><h2 id="h-brain">Brain</h2></div>
-      <div class="brain-active"><span class="label">Active</span><span class="mono" id="brain-model">—</span></div>
+    <section class="mc-sec">
+      <h3>Brain</h3>
+      <label class="sr-only" for="model-select">Brain model</label>
+      <select id="model-select"></select>
       <div class="label">Fallback chain</div>
       <ol class="chain" id="brain-chain"></ol>
-      <div class="brain-active"><span class="label">Eyes</span><span class="mono" id="vision-model">—</span></div>
+      <dl class="kv"><dt>Eyes</dt><dd id="vision-model">—</dd></dl>
     </section>
 
-    <section class="card card-health" id="card-health" aria-labelledby="h-health">
-      <div class="card-head"><span class="card-icon">✚</span><h2 id="h-health">System health</h2></div>
+    <section class="mc-sec">
+      <h3>System health</h3>
       <ul class="health" id="health"></ul>
     </section>
 
-    <section class="card card-memory" id="card-memory" aria-labelledby="h-memory">
-      <div class="card-head"><span class="card-icon">❖</span><h2 id="h-memory">Memory</h2>
-        <span class="mono dim" id="memory-total"></span></div>
+    <section class="mc-sec">
+      <h3>Last thing seen</h3>
+      <div class="seen"><img id="seen-img" alt="" hidden><p class="dim" id="seen-empty">Nothing yet. Press a Look button.</p></div>
+      <p class="seen-desc" id="seen-desc"></p>
+    </section>
+
+    <section class="mc-sec">
+      <h3>Memory <span class="dim" id="memory-total"></span></h3>
       <label class="sr-only" for="memory-search">Search memory</label>
       <input id="memory-search" class="search" placeholder="Search memories…" maxlength="200">
       <ul class="memory" id="memory-list"></ul>
     </section>
-  </main>
 
-  <footer class="dock">
-    <div class="dock-left" id="dock-pills"></div>
-    <div class="dock-center">
-      <button class="btn stop" id="stop-btn" type="button" title="Stop speaking (Esc)">■ Stop speaking <kbd>Esc</kbd></button>
-      <button class="cta" id="mute-btn" type="button" aria-pressed="false">Mute mic</button>
-    </div>
-    <button class="btn ghost" id="clear-btn" type="button">Clear view</button>
-  </footer>
+    <nav class="mc-links" aria-label="Pages">
+      <a href="/memory">Memory &amp; People</a>
+      <a href="/tools">Skills &amp; Tools</a>
+      <a href="/classic#card-health">System</a>
+      <a href="/classic">Classic console</a>
+    </nav>
+  </aside>
 
-  <script src="/static/app.js"></script>
+  <script type="module" src="/static/sphere.js"></script>
+  <script type="module" src="/static/home.js"></script>
 </body>
 </html>

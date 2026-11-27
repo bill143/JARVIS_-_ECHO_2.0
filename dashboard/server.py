@@ -29,7 +29,10 @@ logger = logging.getLogger(__name__)
 STATIC_DIR = Path(__file__).parent / "static"
 TOKEN_HEADER = "X-JARVIS-Token"
 TOKEN_PLACEHOLDER = "__JARVIS_TOKEN__"
-STATIC_ASSETS = ("app.css", "app.js", "memory.css", "memory.js", "tools.css", "tools.js")
+STATIC_ASSETS = (
+    "home.css", "home.js", "sphere.js",
+    "app.css", "app.js", "memory.css", "memory.js", "tools.css", "tools.js",
+)
 MAX_SAY_CHARS = 2000
 MEMORY_LIMIT_MAX = 200
 
@@ -127,6 +130,10 @@ def create_app(
     @app.get("/", response_class=HTMLResponse)
     async def index() -> HTMLResponse:
         return render_page("index.html")
+
+    @app.get("/classic", response_class=HTMLResponse)
+    async def classic() -> HTMLResponse:
+        return render_page("classic.html")
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     add_memory_routes(

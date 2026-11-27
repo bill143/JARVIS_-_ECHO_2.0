@@ -287,14 +287,24 @@ function handle(ev) {
 }
 
 let retryMs = 500;
+// A restarted JARVIS issues a new dashboard token; the old one is rejected
+// forever. When a reconnect fails and the server answers 401, reload.
+async function serverHasNewSession() {
+  try {
+    const res = await fetch("/api/state", { headers: { "X-JARVIS-Token": TOKEN }, cache: "no-store" });
+    return res.status === 401;
+  } catch { return false; }
+}
 function connect() {
+  let opened = false;
   const ws = new WebSocket(`ws://${location.host}/ws?token=${encodeURIComponent(TOKEN)}`);
-  ws.onopen = () => { retryMs = 500; $("conn").textContent = "Live"; $("conn").classList.add("ok"); };
+  ws.onopen = () => { opened = true; retryMs = 500; $("conn").textContent = "Live"; $("conn").classList.add("ok"); };
   ws.onmessage = (msg) => { try { handle(JSON.parse(msg.data)); } catch (err) { console.error(err); } };
-  ws.onclose = () => {
+  ws.onclose = async () => {
     $("conn").textContent = "Reconnecting…"; $("conn").classList.remove("ok");
     setStatus("offline");
-    setTimeout(connect, retryMs);
+    if (!opened && (await serverHasNewSession())) { $("conn").textContent = "JARVIS restarted, reloading"; setTimeout(() => location.reload(), 400); return; }
+    setTimeout(connect, retryMs + Math.random() * retryMs * 0.3);
     retryMs = Math.min(RECONNECT_MAX_MS, retryMs * 2);
   };
 }

@@ -85,6 +85,17 @@ def test_index_injects_token_and_security_headers() -> None:
     assert r.headers["x-content-type-options"] == "nosniff"
 
 
+def test_home_and_classic_pages() -> None:
+    _, _, client = make()
+    home = client.get("/", headers=HOST)
+    assert home.status_code == 200 and 'id="sphere"' in home.text and "MISSION CONTROL" in home.text
+    assert "/static/home.js?v=" in home.text and "/static/sphere.js?v=" in home.text  # cache-busted
+    classic = client.get("/classic", headers=HOST)
+    assert classic.status_code == 200 and TOKEN in classic.text and 'id="card-status"' in classic.text
+    three = client.get("/static/vendor/three-0.169.0.module.min.js", headers=HOST)
+    assert three.status_code == 200 and "javascript" in three.headers["content-type"]
+
+
 def test_rejects_foreign_host_and_missing_token() -> None:
     _, _, client = make()
     assert client.get("/", headers={"host": "evil.example:8090"}).status_code == 403
@@ -205,6 +216,7 @@ def test_resolve_echo_key_skips_stale_key() -> None:
 TESTS = [
     ("bus snapshot + transcript", test_bus_snapshot_and_transcript),
     ("index: token injected + security headers", test_index_injects_token_and_security_headers),
+    ("home (sphere) + /classic pages and vendored Three.js are served", test_home_and_classic_pages),
     ("rejects foreign Host and missing token", test_rejects_foreign_host_and_missing_token),
     ("GET /api/state", test_state_includes_models),
     ("POST /api/say validation + queue", test_say_validates_and_queues),
