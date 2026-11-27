@@ -39,6 +39,7 @@ class DashboardController(Protocol):
     async def set_muted(self, muted: bool) -> None: ...
     async def look(self, source: Literal["camera", "screen"]) -> None: ...
     async def set_model(self, model: str) -> None: ...
+    async def stop(self) -> None: ...
 
 
 class SayBody(BaseModel):
@@ -178,6 +179,17 @@ def create_app(
             return {"queued": True}
 
         return await _control(request, SayBody, act)
+
+    @app.post("/api/stop")
+    async def stop(request: Request):
+        if not _authorized(request):
+            return _err("UNAUTHORIZED", "Missing or invalid dashboard token.", 401)
+        try:
+            await controller.stop()
+        except Exception as exc:
+            logger.warning("stop failed: %s", exc)
+            return _err("CONTROL_FAILED", "JARVIS could not stop.", 500)
+        return _ok({"stopped": True})
 
     @app.post("/api/mute")
     async def mute(request: Request):

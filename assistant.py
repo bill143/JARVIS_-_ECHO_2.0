@@ -33,7 +33,9 @@ from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
-from pipecat.turns.user_mute import AlwaysUserMuteStrategy, FunctionCallUserMuteStrategy
+from pipecat.turns.user_mute import FunctionCallUserMuteStrategy
+from pipecat.turns.user_start import TranscriptionUserTurnStartStrategy, VADUserTurnStartStrategy
+from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from pipecat.transports.local.audio import (
     LocalAudioTransport,
     LocalAudioTransportParams,
@@ -43,6 +45,7 @@ from brain_config import echo_base_url, real_secret, resolve_echo_key
 from dashboard import EventBus
 from dashboard.runtime import start_dashboard
 from dashboard.taps import BotAudioTap, BotTap, HeardTap, MicState, MicTap, ToolTap, UserTap
+from interrupt import InterruptSwitch, SpeechGuard
 from memory import build_memory, memory_enabled
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
@@ -250,21 +253,33 @@ async def run() -> None:
             # Pipecat's default would still run the LLM for it (and Anthropic rejects
             # a context with no user message). Never answer what the gate filtered.
             empty_user_turn=None,
-            # Desktop speakers bleed into the mic (it transcribed its own greeting
-            # as 'Any Jardis here'); ignore the mic while JARVIS is talking, and
-            # while a tool runs, so "hello? what do you see?" during a slow look
-            # can't cancel it (Pipecat cancels in-flight calls on interruption).
-            user_mute_strategies=[AlwaysUserMuteStrategy(), FunctionCallUserMuteStrategy()],
+            # Ignore the mic while a tool runs, so "hello? what do you see?" during
+            # a slow look can't cancel it (Pipecat cancels in-flight calls).
+            user_mute_strategies=[FunctionCallUserMuteStrategy()],
+            # Speech alone never cuts JARVIS off: his own voice bleeds from the
+            # speakers into the mic. Interrupting is explicit - the dashboard's
+            # Stop button / Esc, or a spoken "stop" (SpeechGuard) - and the guard
+            # drops everything else heard while he talks (echo).
+            user_turn_strategies=UserTurnStrategies(
+                start=[
+                    VADUserTurnStartStrategy(enable_interruptions=False),
+                    TranscriptionUserTurnStartStrategy(enable_interruptions=False),
+                ]
+            ),
         ),
     )
 
     wake_gate = WakeWordProcessor(gate_from_env())
+    stop_switch = InterruptSwitch(on_interrupt=lambda reason: bus.publish("interrupted", reason=reason))
+    speech_guard = SpeechGuard(stop_switch)
 
     pipeline = Pipeline(
         [
             transport.input(),
+            stop_switch,             # Stop button / Esc / spoken "stop" interrupt from here
             MicTap(bus, mic),        # dashboard: mic level meter + mute
             stt,
+            speech_guard,            # while JARVIS talks: drop echo, act on "stop"
             HeardTap(bus),           # dashboard: everything Whisper heard
             wake_gate,               # drop everything until "hey jarvis"
             UserTap(bus),            # dashboard: requests that got through
@@ -298,6 +313,7 @@ async def run() -> None:
             echo_base_url=ECHO_BASE_URL,
             vision_model=(os.getenv("VISION_MODEL") or "vision-dev") if vision_schemas else None,
             memory=_dashboard_memory(),
+            stop_switch=stop_switch,
         )
 
     # Greet on startup.

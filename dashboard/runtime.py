@@ -38,8 +38,10 @@ LOOK_PROMPTS = {
 
 
 class JarvisController:
-    def __init__(self, bus: EventBus, task, mic: MicState, model: str, fallbacks: dict[str, list[str]]):
+    def __init__(self, bus: EventBus, task, mic: MicState, model: str, fallbacks: dict[str, list[str]],
+                 stop_switch=None):
         self._bus = bus
+        self._stop_switch = stop_switch
         self._task = task
         self._mic = mic
         self._model = model
@@ -64,6 +66,12 @@ class JarvisController:
     async def look(self, source: Literal["camera", "screen"]) -> None:
         await self.say(LOOK_PROMPTS[source], source="button")
 
+    async def stop(self) -> None:
+        """Cut JARVIS off mid-reply (LLM stream cancelled, TTS + audio flushed)."""
+        if self._stop_switch is None:
+            raise RuntimeError("Stop is not wired into this pipeline")
+        await self._stop_switch.trigger("button")
+
     async def set_muted(self, muted: bool) -> None:
         self._mic.muted = muted
         self._bus.publish("muted", muted=muted)
@@ -85,13 +93,14 @@ async def start_dashboard(
     echo_base_url: str | None,
     vision_model: str | None,
     memory=None,
+    stop_switch=None,
 ) -> JarvisController | None:
     """Start the dashboard server (+ health checks, + app window). Never raises:
     if the dashboard can't start, JARVIS keeps working voice-only."""
     bus.bind_loop()
     port = int(os.getenv("DASHBOARD_PORT", str(DEFAULT_PORT)))
     fallbacks = load_fallbacks(ECHO_CONFIG)
-    controller = JarvisController(bus, task, mic, model, fallbacks)
+    controller = JarvisController(bus, task, mic, model, fallbacks, stop_switch)
     bus.publish("config", config={**controller.model_config(), "mic": mic_name, "vision_model": vision_model})
 
     def on_seen(source: str, description: str, jpeg: bytes | None) -> None:

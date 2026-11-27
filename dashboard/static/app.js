@@ -41,7 +41,7 @@ function fmtTime(ts) {
 }
 
 // ---------------------------------------------------------------- transcript
-const LABELS = { user: "You", reply: "JARVIS", heard: "Heard (ignored)", tool: "Tool", seen: "Saw", error: "Error" };
+const LABELS = { user: "You", reply: "JARVIS", heard: "Heard (ignored)", tool: "Tool", seen: "Saw", error: "Error", interrupted: "Stopped" };
 
 function addMessage(kind, text, ts, extra) {
   const list = $("transcript");
@@ -79,6 +79,7 @@ function renderTranscriptEntry(ev) {
     case "tool": return addMessage("tool", toolText(ev), ev.ts);
     case "seen": return addMessage("seen", `${ev.source}: ${ev.description}`, ev.ts);
     case "error": return addMessage("error", ev.message || "Something went wrong.", ev.ts);
+    case "interrupted": return addMessage("interrupted", ev.reason === "voice" ? "Stopped by voice" : "Stopped", ev.ts);
     default: return null;
   }
 }
@@ -106,6 +107,7 @@ function finishReply(text, ts) {
 // ---------------------------------------------------------------- panels
 function setStatus(state) {
   ui.state = state;
+  $("stop-btn").classList.toggle("active", state === "speaking" || state === "thinking");
   const shown = ui.muted ? "muted" : state;
   const pill = $("state-pill");
   pill.dataset.state = shown;
@@ -313,6 +315,14 @@ $("say-form").addEventListener("submit", (e) => {
 });
 $("look-camera").addEventListener("click", (e) => withButton(e.currentTarget, () => api("/api/look", { source: "camera" })));
 $("look-screen").addEventListener("click", (e) => withButton(e.currentTarget, () => api("/api/look", { source: "screen" })));
+function stopSpeaking() {
+  if (ui.streamingReply) { ui.streamingReply.classList.remove("streaming"); ui.streamingReply = null; }
+  return api("/api/stop", {}).catch((err) => addMessage("error", err.message));
+}
+$("stop-btn").addEventListener("click", stopSpeaking);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !e.repeat) { e.preventDefault(); stopSpeaking(); }
+});
 $("mute-btn").addEventListener("click", (e) => withButton(e.currentTarget, () => api("/api/mute", { muted: !ui.muted })));
 $("model-select").addEventListener("change", (e) => {
   const model = e.target.value;

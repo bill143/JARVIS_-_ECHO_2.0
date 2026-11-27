@@ -16,7 +16,7 @@ from typing import Any
 
 TRANSCRIPT_LIMIT = 200
 SUBSCRIBER_QUEUE_LIMIT = 500
-TRANSCRIPT_TYPES = frozenset({"heard", "user", "reply", "tool", "error", "seen"})
+TRANSCRIPT_TYPES = frozenset({"heard", "user", "reply", "tool", "error", "seen", "interrupted"})
 
 
 class EventBus:

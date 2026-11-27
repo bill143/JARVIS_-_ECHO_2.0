@@ -45,6 +45,10 @@ class FakeController:
     async def look(self, source: str) -> None:
         self.looks.append(source)
 
+    async def stop(self) -> None:
+        self.stops = getattr(self, "stops", 0) + 1
+        self.bus.publish("interrupted", reason="button")
+
     async def set_model(self, model: str) -> None:
         self.model = model
         self.bus.publish("config", config={"model": model})
@@ -116,6 +120,15 @@ def test_look_mute_and_model() -> None:
     assert client.post("/api/model", json={"model": "gpt-9"}, headers=AUTH).status_code == 422
     assert client.post("/api/model", json={"model": "local-dev"}, headers=AUTH).status_code == 200
     assert controller.model == "local-dev" and bus.get("config")["model"] == "local-dev"
+
+
+def test_stop_endpoint() -> None:
+    bus, controller, client = make()
+    assert client.post("/api/stop", json={}, headers=HOST).status_code == 401
+    r = client.post("/api/stop", json={}, headers=AUTH)
+    assert r.status_code == 200 and r.json()["data"] == {"stopped": True}
+    assert controller.stops == 1
+    assert bus.snapshot()["transcript"][-1]["type"] == "interrupted"
 
 
 def test_memory_list_and_search() -> None:
@@ -196,6 +209,7 @@ TESTS = [
     ("GET /api/state", test_state_includes_models),
     ("POST /api/say validation + queue", test_say_validates_and_queues),
     ("look / mute / model controls", test_look_mute_and_model),
+    ("POST /api/stop interrupts", test_stop_endpoint),
     ("memory list + search (real Obsidian store)", test_memory_list_and_search),
     ("websocket rejects bad token", test_websocket_requires_token),
     ("websocket snapshot then live events", test_websocket_snapshot_then_live_events),
