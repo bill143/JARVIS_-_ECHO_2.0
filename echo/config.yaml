@@ -95,12 +95,14 @@ model_list:
     litellm_params:
       model: ollama_chat/qwen2.5:14b-instruct
       api_base: http://localhost:11434
+      temperature: 0.3
 
   # Groq free tier (cloud, fast): optional fallback for local-dev.
   - model_name: groq-dev
     litellm_params:
       model: groq/llama-3.3-70b-versatile
       api_key: os.environ/GROQ_API_KEY
+      temperature: 0.3
 
   # JARVIS's default brain: Groq free tier (llama-3.3-70b, strong tool use).
   # Falls back to local-dev, then funded clouds once they have credits.
@@ -108,6 +110,9 @@ model_list:
     litellm_params:
       model: groq/llama-3.3-70b-versatile
       api_key: os.environ/GROQ_API_KEY
+      # Groq's default temperature (1.0) occasionally emitted stray multilingual
+      # junk tokens at the start of a spoken reply; a voice assistant wants 0.3.
+      temperature: 0.3
   # JARVIS's eyes: local Ollama vision model (pull: `ollama pull qwen2.5vl:7b`).
   - model_name: vision-dev
     litellm_params:

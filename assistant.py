@@ -160,6 +160,7 @@ def build_llm():
 def system_prompt(people_line: str = "") -> str:
     return (
         f"Your name is {ASSISTANT_NAME}. You are a witty, helpful voice assistant. "
+        "Always reply in English, even when a tool result or name looks like another language. "
         "Think the problem through step by step silently before you answer, but only "
         "ever SAY the short conclusion: one to three conversational sentences. "
         "Your interface with the user is voice, so avoid unpronounceable punctuation, "
