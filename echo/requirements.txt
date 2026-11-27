@@ -6,7 +6,9 @@
 litellm[proxy]~=1.55
 
 # Observability.
-langfuse~=2.50
+# litellm 1.111+ moved its langfuse callback onto OpenTelemetry and refuses to
+# start the proxy unless the v4 SDK is installed (v2 crashes startup).
+langfuse>=4.7,<5
 
 # Config validation / tooling.
 pyyaml~=6.0

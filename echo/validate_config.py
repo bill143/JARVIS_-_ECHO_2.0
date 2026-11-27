@@ -31,7 +31,10 @@ EXPECTED_TIERS = {
     "tier-reasoning",
     "tier-realtime",
 }
+LOCAL_PROVIDER_PREFIXES = ("ollama_chat/", "ollama/")
 KNOWN_PROVIDER_PREFIXES = (
+    "ollama_chat/",
+    "groq/",
     "anthropic/",
     "openai/",
     "gemini/",
@@ -76,6 +79,11 @@ def validate(config: dict) -> list[str]:
         api_key = params.get("api_key", "")
         if not str(model).startswith(KNOWN_PROVIDER_PREFIXES):
             errors.append(f"{name}: model '{model}' lacks a known provider prefix")
+        # Local, keyless providers (Ollama) need no key; any key that IS set must
+        # still come from the environment, never be hardcoded.
+        is_local = str(model).startswith(LOCAL_PROVIDER_PREFIXES)
+        if is_local and not api_key:
+            continue
         if not str(api_key).startswith("os.environ/"):
             errors.append(f"{name}: api_key must reference os.environ/ (got '{api_key}')")
 

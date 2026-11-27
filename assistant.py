@@ -27,18 +27,22 @@ from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
+    LLMUserAggregatorParams,
 )
 from pipecat.services.anthropic.llm import AnthropicLLMService
 from pipecat.services.openai.llm import OpenAILLMService
 from pipecat.services.kokoro.tts import KokoroTTSService
 from pipecat.services.whisper.stt import WhisperSTTService
+from pipecat.turns.user_mute import AlwaysUserMuteStrategy
 from pipecat.transports.local.audio import (
     LocalAudioTransport,
     LocalAudioTransportParams,
 )
 
+from brain_config import echo_base_url, real_secret
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
+from time_tools import register_time_tools
 from mcp_tools import register_mcp_tools
 
 load_dotenv()
@@ -46,15 +50,23 @@ load_dotenv()
 ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "JARVIS")
 ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
+# "cpu" works everywhere. "cuda"/"auto" need the CUDA 12 runtime (cuBLAS + cuDNN)
+# on PATH; without it faster-whisper fails every segment with
+# "cublas64_12.dll is not found" whenever an NVIDIA GPU is present.
+WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "cpu").strip().lower() or "cpu"
+WHISPER_COMPUTE_TYPE = os.getenv("WHISPER_COMPUTE_TYPE", "int8" if WHISPER_DEVICE == "cpu" else "default")
 KOKORO_VOICE = os.getenv("KOKORO_VOICE", "af_heart")
 GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 
 # Route JARVIS's thinking through ECHO (the multi-provider proxy) when
 # configured; otherwise fall back to calling Anthropic directly. ECHO speaks an
 # OpenAI-compatible API, so we point an OpenAILLMService at it.
-ECHO_BASE_URL = os.getenv("ECHO_BASE_URL")  # e.g. http://localhost:4000/v1
-ECHO_API_KEY = os.getenv("ECHO_API_KEY") or os.getenv("ECHO_MASTER_KEY")
-ECHO_MODEL = os.getenv("ECHO_MODEL", "gemini-3.1-pro-preview")
+ECHO_BASE_URL = echo_base_url()  # e.g. http://localhost:4000/v1
+ECHO_API_KEY = real_secret("ECHO_API_KEY", "ECHO_MASTER_KEY")
+# Default: the free local Ollama alias in ECHO; set e.g. gemini-3.1-pro-preview
+# or tier-realtime to use a funded cloud model instead.
+ECHO_MODEL = (os.getenv("ECHO_MODEL") or "").strip() or "local-dev"
+ANTHROPIC_API_KEY = real_secret("ANTHROPIC_API_KEY")
 
 
 def _optional_int_env(name: str):
@@ -83,13 +95,15 @@ def build_llm():
                 "ECHO_BASE_URL is set but ECHO_API_KEY (or ECHO_MASTER_KEY) is empty. "
                 "Add ECHO's key to your .env so JARVIS can authenticate to the proxy."
             )
+        print(f"[JARVIS] Brain: ECHO -> {ECHO_BASE_URL} (model {ECHO_MODEL})", flush=True)
         return OpenAILLMService(
             base_url=ECHO_BASE_URL,
             api_key=ECHO_API_KEY,
             model=ECHO_MODEL,
         )
+    print(f"[JARVIS] Brain: Anthropic direct (model {ANTHROPIC_MODEL})", flush=True)
     return AnthropicLLMService(
-        api_key=os.environ["ANTHROPIC_API_KEY"],
+        api_key=ANTHROPIC_API_KEY,
         model=ANTHROPIC_MODEL,
     )
 
@@ -137,25 +151,42 @@ async def run() -> None:
         LocalAudioTransportParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
-            vad_analyzer=SileroVADAnalyzer(),
             input_device_index=AUDIO_INPUT_DEVICE_INDEX,
             output_device_index=AUDIO_OUTPUT_DEVICE_INDEX,
         )
     )
 
-    stt = WhisperSTTService(model=WHISPER_MODEL)
+    stt = WhisperSTTService(
+        model=WHISPER_MODEL, device=WHISPER_DEVICE, compute_type=WHISPER_COMPUTE_TYPE
+    )
     tts = KokoroTTSService(voice_id=KOKORO_VOICE)
     llm = build_llm()
 
     # Cross-session memory (remember/recall) and any configured MCP servers.
     mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
-    tools = ToolsSchema(standard_tools=[*register_memory_tools(llm), *mcp_schemas])
+    tools = ToolsSchema(
+        standard_tools=[*register_time_tools(llm), *register_memory_tools(llm), *mcp_schemas]
+    )
 
     context = LLMContext(
         messages=[{"role": "system", "content": system_prompt()}],
         tools=tools,
     )
-    aggregators = LLMContextAggregatorPair(context)
+    # Pipecat 1.x runs VAD in the user aggregator; TransportParams no longer has a
+    # vad_analyzer field (it was silently ignored), which left Whisper deaf.
+    aggregators = LLMContextAggregatorPair(
+        context,
+        user_params=LLMUserAggregatorParams(
+            vad_analyzer=SileroVADAnalyzer(),
+            # The wake gate drops non-wake speech, leaving a turn with no transcript;
+            # Pipecat's default would still run the LLM for it (and Anthropic rejects
+            # a context with no user message). Never answer what the gate filtered.
+            empty_user_turn=None,
+            # Desktop speakers bleed into the mic (it transcribed its own greeting
+            # as 'Any Jardis here'); ignore the mic while JARVIS is talking.
+            user_mute_strategies=[AlwaysUserMuteStrategy()],
+        ),
+    )
 
     wake_gate = WakeWordProcessor(gate_from_env())
 
@@ -172,9 +203,12 @@ async def run() -> None:
         ]
     )
 
+    # The desktop build is an always-listening, wake-word assistant: it must not
+    # shut itself down after Pipecat's default 300s of no bot activity.
     task = PipelineTask(
         pipeline,
         params=PipelineParams(allow_interruptions=True, enable_metrics=False),
+        idle_timeout_secs=None,
     )
 
     # Greet on startup.
@@ -185,10 +219,11 @@ async def run() -> None:
 
 
 def main() -> None:
-    if not ECHO_BASE_URL and not os.getenv("ANTHROPIC_API_KEY"):
+    if not ECHO_BASE_URL and not ANTHROPIC_API_KEY:
         raise SystemExit(
-            "Set ECHO_BASE_URL to route through ECHO, or ANTHROPIC_API_KEY to call "
-            "Anthropic directly. Copy .env.example to .env to configure."
+            "No brain configured: ECHO_BASE_URL is blank and ANTHROPIC_API_KEY is empty "
+            "or still the .env.example placeholder. Set ECHO_BASE_URL (+ ECHO_API_KEY) to "
+            "route through ECHO, or a real ANTHROPIC_API_KEY to call Anthropic directly."
         )
     asyncio.run(run())
 
