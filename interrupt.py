@@ -53,6 +53,29 @@ RESTART_WATCH_SECS = 5.0  # speech starting again this soon after a stop, unprom
 CUT_MEASURE_SECS = 3.0  # a stop pressed while JARVIS is quiet is not measured
 
 
+_STOP_REACH = 3  # "JARVIS, please just stop": the stop word within 3 words of his name
+
+
+def contains_addressed_stop(text: str) -> bool:
+    """True when "JARVIS ... stop" appears anywhere, even inside a longer transcript.
+
+    Whisper often glues the user's "JARVIS, stop" onto JARVIS's own voice coming
+    back through the mic ("...during the storm. Jarvis, stop. Small steel beams"),
+    which ``is_stop_command`` rightly rejects as too long. Requiring his name keeps
+    his own sentences that merely contain "stop" from cutting him off.
+    """
+    words = ["jarvis" if _word_matches(w, "jarvis") else w for w in _TOKEN.findall((text or "").lower())]
+    for i, word in enumerate(words):
+        if word != "jarvis":
+            continue
+        for follower in words[i + 1:i + 1 + _STOP_REACH]:
+            if follower in _STOP_WORDS:
+                return True
+            if follower not in _FILLER:
+                break
+    return False
+
+
 class InterruptSwitch(FrameProcessor):
     """Pass-through processor that can interrupt the whole pipeline on demand.
 
@@ -136,6 +159,9 @@ class SpeechGuard(FrameProcessor):
                 if self.bot_is_talking():
                     await self._switch.trigger("voice")
                 return  # a stop command is never a question for the brain
+            if self.bot_is_talking() and contains_addressed_stop(frame.text):
+                await self._switch.trigger("voice")
+                return  # "JARVIS, stop" mixed into his own echo
             if self.bot_is_talking():
                 if self._on_dropped:
                     self._on_dropped(frame.text)
