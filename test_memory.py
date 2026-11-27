@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+from pathlib import Path
 
 from memory.embeddings import HashingEmbeddings
 from memory.factory import build_memory, memory_enabled
@@ -92,6 +93,29 @@ def test_factory_supabase_requires_credentials() -> None:
         os.environ["MEMORY_BACKEND"] = "obsidian"
 
 
+def test_vault_boilerplate_is_not_memory() -> None:
+    """A real Obsidian vault holds the user's notes too; only JARVIS's own count."""
+    with tempfile.TemporaryDirectory() as d:
+        vault = Path(d)
+        (vault / "Welcome.md").write_text(
+            "This is your new *vault*. Make a note of something, [[create a link]].", encoding="utf-8"
+        )
+        (vault / "Meeting notes.md").write_text("# Site walk\nPunch list for bay 7.", encoding="utf-8")
+        (vault / "Untitled.md").write_text("", encoding="utf-8")
+        (vault / "bad-date.md").write_text(
+            "---\nid: abc\ncreated_at: not-a-date\n---\nhello", encoding="utf-8"
+        )
+        store = ObsidianMemory(vault)
+        assert store.count() == 0, [r.text for r in store.recent(10)]
+        store.add("The truck is parked in bay 7.", {"source": "voice"})
+        assert store.count() == 1
+        texts = [r.text for r in store.recent(10)]
+        assert texts == ["The truck is parked in bay 7."], texts
+        hits = store.search("bay 7")
+        assert [h.text for h in hits] == ["The truck is parked in bay 7."], [h.text for h in hits]
+        assert all(r.created_at for r in store.recent(10))
+
+
 def main() -> None:
     passed = 0
     with tempfile.TemporaryDirectory() as vault:
@@ -106,6 +130,7 @@ def main() -> None:
             ("hashing embeddings", test_hashing_embeddings_deterministic_and_normalized, ()),
             ("factory selects obsidian", test_factory_selects_obsidian, (vault,)),
             ("supabase needs credentials", test_factory_supabase_requires_credentials, ()),
+            ("vault boilerplate is not memory", test_vault_boilerplate_is_not_memory, ()),
         ]
         for name, fn, args in checks:
             fn(*args)

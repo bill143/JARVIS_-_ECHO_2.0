@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="jarvis-token" content="__JARVIS_TOKEN__">
+  <title>JARVIS</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-dot" id="brand-dot"></span><span class="brand-name">JARVIS</span>
+      <span class="brand-sub">Command Console</span></div>
+    <div class="topbar-right">
+      <label class="model-pick" for="model-select"><span class="label">Brain</span>
+        <select id="model-select" aria-label="Brain model"></select></label>
+      <span class="conn" id="conn" role="status">Connecting…</span>
+      <time class="clock mono" id="clock"></time>
+    </div>
+  </header>
+
+  <nav class="sidebar" aria-label="Sections">
+    <a class="nav-item active" href="#card-status" data-target="card-status">Overview</a>
+    <a class="nav-item" href="#card-conversation" data-target="card-conversation">Conversation
+      <span class="badge" id="badge-conversation" hidden>0</span></a>
+    <a class="nav-item" href="#card-vision" data-target="card-vision">Vision</a>
+    <a class="nav-item" href="#card-memory" data-target="card-memory">Memory
+      <span class="badge" id="badge-memory" hidden>0</span></a>
+    <a class="nav-item" href="#card-health" data-target="card-health">System</a>
+  </nav>
+
+  <main class="grid">
+    <section class="card card-status" id="card-status" aria-labelledby="h-status">
+      <div class="card-head"><span class="card-icon">◉</span><h2 id="h-status">Status</h2>
+        <span class="state-pill" id="state-pill">Starting</span></div>
+      <div class="orb-wrap"><canvas id="orb" width="320" height="320" aria-hidden="true"></canvas></div>
+      <div class="mic-row">
+        <div class="mic-meta"><span class="label">Microphone</span>
+          <span class="mic-name" id="mic-name">—</span></div>
+        <div class="wave" id="wave" aria-label="Microphone level" role="meter"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+      </div>
+    </section>
+
+    <section class="card card-conversation" id="card-conversation" aria-labelledby="h-conv">
+      <div class="card-head"><span class="card-icon">≋</span><h2 id="h-conv">Conversation</h2>
+        <label class="toggle"><input type="checkbox" id="show-ambient"> Show ignored speech</label></div>
+      <ol class="transcript" id="transcript" aria-live="polite"></ol>
+      <form class="say" id="say-form" autocomplete="off">
+        <label class="sr-only" for="say-input">Type to JARVIS</label>
+        <input id="say-input" maxlength="2000" placeholder="Type to JARVIS — the reply is spoken and shown here">
+        <button type="submit" class="btn">Send</button>
+      </form>
+    </section>
+
+    <section class="card card-vision" id="card-vision" aria-labelledby="h-vision">
+      <div class="card-head"><span class="card-icon">◎</span><h2 id="h-vision">Last thing JARVIS saw</h2></div>
+      <div class="vision-frame"><img id="vision-img" alt="" hidden>
+        <p class="vision-empty" id="vision-empty">Nothing yet. Ask “what do you see?” or press Look.</p></div>
+      <p class="vision-desc" id="vision-desc"></p>
+      <div class="row-btns">
+        <button class="btn" id="look-camera" type="button">Look (camera)</button>
+        <button class="btn" id="look-screen" type="button">Look (screen)</button>
+      </div>
+    </section>
+
+    <section class="card card-brain" id="card-brain" aria-labelledby="h-brain">
+      <div class="card-head"><span class="card-icon">⌬</span><h2 id="h-brain">Brain</h2></div>
+      <div class="brain-active"><span class="label">Active</span><span class="mono" id="brain-model">—</span></div>
+      <div class="label">Fallback chain</div>
+      <ol class="chain" id="brain-chain"></ol>
+      <div class="brain-active"><span class="label">Eyes</span><span class="mono" id="vision-model">—</span></div>
+    </section>
+
+    <section class="card card-health" id="card-health" aria-labelledby="h-health">
+      <div class="card-head"><span class="card-icon">✚</span><h2 id="h-health">System health</h2></div>
+      <ul class="health" id="health"></ul>
+    </section>
+
+    <section class="card card-memory" id="card-memory" aria-labelledby="h-memory">
+      <div class="card-head"><span class="card-icon">❖</span><h2 id="h-memory">Memory</h2>
+        <span class="mono dim" id="memory-total"></span></div>
+      <label class="sr-only" for="memory-search">Search memory</label>
+      <input id="memory-search" class="search" placeholder="Search memories…" maxlength="200">
+      <ul class="memory" id="memory-list"></ul>
+    </section>
+  </main>
+
+  <footer class="dock">
+    <div class="dock-left" id="dock-pills"></div>
+    <button class="cta" id="mute-btn" type="button" aria-pressed="false">Mute mic</button>
+    <button class="btn ghost" id="clear-btn" type="button">Clear view</button>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

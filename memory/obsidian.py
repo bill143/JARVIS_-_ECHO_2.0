@@ -90,15 +90,22 @@ class ObsidianMemory(MemoryStore):
         )
 
     def _all(self) -> list[MemoryRecord]:
+        """JARVIS's own memories only.
+
+        The vault is usually a real Obsidian vault shared with the user's notes
+        (Obsidian's "Welcome.md", drafts, empty notes). Only notes written by
+        ``add`` count: they always carry ``id`` + a parseable ``created_at`` in
+        their frontmatter and a non-empty body.
+        """
         records = []
         for path in self.vault.glob("*.md"):
             rec = self._read(path)
-            if rec is not None:
+            if rec is not None and _is_jarvis_memory(rec, path):
                 records.append(rec)
         return records
 
     def count(self) -> int:
-        return sum(1 for _ in self.vault.glob("*.md"))
+        return len(self._all())
 
     def recent(self, k: int = 5) -> list[MemoryRecord]:
         records = self._all()
@@ -125,3 +132,21 @@ class ObsidianMemory(MemoryStore):
         # Primary: score. Tiebreak: recency.
         scored.sort(key=lambda r: (r.score, r.created_at), reverse=True)
         return scored[: max(0, k)]
+
+
+def _is_jarvis_memory(rec: MemoryRecord, path: Path) -> bool:
+    """True for notes written by ``ObsidianMemory.add``; False for vault boilerplate.
+
+    ``add`` always writes frontmatter ``id`` (different from the file stem, which
+    is ``<date>-<id8>``) and an ISO ``created_at``. Obsidian's Welcome.md and the
+    user's own notes have neither, so they never surface as JARVIS "facts".
+    """
+    from datetime import datetime  # noqa: PLC0415
+
+    if not rec.text.strip() or rec.id == path.stem or not rec.created_at:
+        return False
+    try:
+        datetime.fromisoformat(rec.created_at)
+    except ValueError:
+        return False
+    return True

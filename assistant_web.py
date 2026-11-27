@@ -38,7 +38,7 @@ from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.smallwebrtc.transport import SmallWebRTCTransport
 
 from wakeword import WakeWordProcessor, gate_from_env
-from brain_config import echo_base_url, real_secret
+from brain_config import echo_base_url, real_secret, resolve_echo_key
 from memory_tools import register_memory_tools
 from time_tools import register_time_tools
 from vision_tools import register_vision_tools
@@ -59,7 +59,7 @@ GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 
 # Route through ECHO (OpenAI-compatible) when configured, else Anthropic direct.
 ECHO_BASE_URL = echo_base_url()  # e.g. http://localhost:4000/v1
-ECHO_API_KEY = real_secret("ECHO_API_KEY", "ECHO_MASTER_KEY")
+ECHO_API_KEY = resolve_echo_key(ECHO_BASE_URL)
 # Default: ECHO's free 'brain' alias (Groq -> local Ollama -> paid clouds); set e.g. gemini-3.1-pro-preview
 # or tier-realtime to use a funded cloud model instead.
 ECHO_MODEL = (os.getenv("ECHO_MODEL") or "").strip() or "brain"

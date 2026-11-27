@@ -5,8 +5,8 @@ Fully-local voice stack; ECHO (or Claude direct) as the brain:
     mic --> Whisper (STT) --> wake-word gate --> LLM --> Kokoro (TTS) --> speaker
 
 STT (Whisper), TTS (Kokoro) and VAD (Silero) all run locally; only the LLM call
-leaves the machine. JARVIS is voice-only this phase (vision is quarantined in
-``/deferred``).
+leaves the machine. A live dashboard window runs alongside at
+http://127.0.0.1:8090 (see ``dashboard/``).
 
 Run:  ``python assistant.py``
 """
@@ -39,7 +39,11 @@ from pipecat.transports.local.audio import (
     LocalAudioTransportParams,
 )
 
-from brain_config import echo_base_url, real_secret
+from brain_config import echo_base_url, real_secret, resolve_echo_key
+from dashboard import EventBus
+from dashboard.runtime import start_dashboard
+from dashboard.taps import BotAudioTap, BotTap, HeardTap, MicState, MicTap, ToolTap, UserTap
+from memory import build_memory, memory_enabled
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
 from time_tools import register_time_tools
@@ -63,7 +67,9 @@ GREETING = os.getenv("GREETING", "Hey, JARVIS here. How can I help?")
 # configured; otherwise fall back to calling Anthropic directly. ECHO speaks an
 # OpenAI-compatible API, so we point an OpenAILLMService at it.
 ECHO_BASE_URL = echo_base_url()  # e.g. http://localhost:4000/v1
-ECHO_API_KEY = real_secret("ECHO_API_KEY", "ECHO_MASTER_KEY")
+# Whichever of ECHO_API_KEY / ECHO_MASTER_KEY the proxy actually accepts (a stale
+# ECHO_API_KEY after a master-key rotation used to break every LLM call).
+ECHO_API_KEY = resolve_echo_key(ECHO_BASE_URL)
 # Default: ECHO's free 'brain' alias (Groq -> local Ollama -> paid clouds); set e.g. gemini-3.1-pro-preview
 # or tier-realtime to use a funded cloud model instead.
 ECHO_MODEL = (os.getenv("ECHO_MODEL") or "").strip() or "brain"
@@ -85,6 +91,40 @@ def _optional_int_env(name: str):
 # Run `python mic_test.py` to list device indices and levels, then set e.g.
 # AUDIO_INPUT_DEVICE_INDEX=3 to force a specific microphone.
 AUDIO_INPUT_DEVICE_INDEX = _optional_int_env("AUDIO_INPUT_DEVICE_INDEX")
+# Or choose the microphone by (part of) its name, e.g. AUDIO_INPUT_DEVICE_NAME=ATR4650.
+# Windows reshuffles device indices as USB devices come and go; names are stable.
+AUDIO_INPUT_DEVICE_NAME = (os.getenv("AUDIO_INPUT_DEVICE_NAME") or "").strip()
+
+
+def _input_device_by_name(name: str):
+    """Index of the first input device (MME first, as Pipecat opens it) whose name contains ``name``."""
+    try:
+        import pyaudio
+    except ImportError:
+        return None
+    pa = pyaudio.PyAudio()
+    try:
+        wanted = name.lower()
+        matches = []
+        for i in range(pa.get_device_count()):
+            info = pa.get_device_info_by_index(i)
+            if info.get("maxInputChannels", 0) > 0 and wanted in str(info.get("name", "")).lower():
+                matches.append((info.get("hostApi", 99), i))
+        return min(matches)[1] if matches else None
+    finally:
+        pa.terminate()
+
+
+# A device NAME wins over an index when both are set (names survive re-plugging).
+_MIC_SOURCE = "AUDIO_INPUT_DEVICE_INDEX"
+if AUDIO_INPUT_DEVICE_NAME:
+    _by_name = _input_device_by_name(AUDIO_INPUT_DEVICE_NAME)
+    if _by_name is not None:
+        AUDIO_INPUT_DEVICE_INDEX = _by_name
+        _MIC_SOURCE = f"AUDIO_INPUT_DEVICE_NAME={AUDIO_INPUT_DEVICE_NAME}"
+    else:
+        print(f"[JARVIS] No microphone matches AUDIO_INPUT_DEVICE_NAME={AUDIO_INPUT_DEVICE_NAME!r}; "
+              "falling back to AUDIO_INPUT_DEVICE_INDEX / the OS default.", flush=True)
 AUDIO_OUTPUT_DEVICE_INDEX = _optional_int_env("AUDIO_OUTPUT_DEVICE_INDEX")
 
 
@@ -123,7 +163,7 @@ def system_prompt() -> str:
     )
 
 
-def report_microphone() -> None:
+def report_microphone() -> str:
     """Print which input device JARVIS will open (index + name) at startup.
 
     This only *queries* device metadata — it never opens a capture stream. An
@@ -134,7 +174,7 @@ def report_microphone() -> None:
     try:
         import pyaudio
     except ImportError:
-        return
+        return "unknown"
     pa = pyaudio.PyAudio()
     try:
         index = AUDIO_INPUT_DEVICE_INDEX
@@ -144,16 +184,31 @@ def report_microphone() -> None:
             source = "OS default"
         else:
             info = pa.get_device_info_by_index(index)
-            source = "AUDIO_INPUT_DEVICE_INDEX"
+            source = _MIC_SOURCE
         print(f"[JARVIS] Microphone: {source} -> index {index} ({info['name']})", flush=True)
+        return f"{info['name']} (index {index})"
     except Exception as exc:  # noqa: BLE001 - purely diagnostic
         print(f"[JARVIS] Microphone check failed: {exc}", flush=True)
+        return "unknown"
     finally:
         pa.terminate()
 
 
+def _dashboard_memory():
+    """A read-only handle on the same memory store the tools write to (or None)."""
+    if not memory_enabled():
+        return None
+    try:
+        return build_memory()
+    except Exception as exc:  # memory misconfigured: the dashboard just hides it
+        print(f"[JARVIS] Dashboard memory panel disabled: {exc}", flush=True)
+        return None
+
+
 async def run() -> None:
-    report_microphone()
+    mic_name = report_microphone()
+    bus = EventBus()
+    mic = MicState()
     transport = LocalAudioTransport(
         LocalAudioTransportParams(
             audio_in_enabled=True,
@@ -171,11 +226,12 @@ async def run() -> None:
 
     # Cross-session memory (remember/recall) and any configured MCP servers.
     mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
+    vision_schemas = register_vision_tools(llm, ECHO_BASE_URL, ECHO_API_KEY)
     tools = ToolsSchema(
         standard_tools=[
             *register_time_tools(llm),
             *register_memory_tools(llm),
-            *register_vision_tools(llm, ECHO_BASE_URL, ECHO_API_KEY),
+            *vision_schemas,
             *mcp_schemas,
         ]
     )
@@ -205,12 +261,18 @@ async def run() -> None:
     pipeline = Pipeline(
         [
             transport.input(),
+            MicTap(bus, mic),        # dashboard: mic level meter + mute
             stt,
+            HeardTap(bus),           # dashboard: everything Whisper heard
             wake_gate,               # drop everything until "hey jarvis"
+            UserTap(bus),            # dashboard: requests that got through
             aggregators.user(),
             llm,
+            ToolTap(bus),            # dashboard: tool calls
             tts,
+            BotAudioTap(bus),        # dashboard: speech level for the orb
             transport.output(),
+            BotTap(bus),             # dashboard: speaking state + reply text
             aggregators.assistant(),
         ]
     )
@@ -222,6 +284,19 @@ async def run() -> None:
         params=PipelineParams(allow_interruptions=True, enable_metrics=False),
         idle_timeout_secs=None,
     )
+
+    # The dashboard window (http://127.0.0.1:8090). Optional: voice works without it.
+    if os.getenv("DASHBOARD_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:
+        await start_dashboard(
+            bus,
+            task,
+            mic,
+            model=ECHO_MODEL if ECHO_BASE_URL else ANTHROPIC_MODEL,
+            mic_name=mic_name,
+            echo_base_url=ECHO_BASE_URL,
+            vision_model=(os.getenv("VISION_MODEL") or "vision-dev") if vision_schemas else None,
+            memory=_dashboard_memory(),
+        )
 
     # Greet on startup.
     await task.queue_frames([TTSSpeakFrame(GREETING)])
