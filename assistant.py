@@ -42,6 +42,7 @@ from pipecat.transports.local.audio import (
 from brain_config import echo_base_url, real_secret
 from wakeword import WakeWordProcessor, gate_from_env
 from memory_tools import register_memory_tools
+from time_tools import register_time_tools
 from mcp_tools import register_mcp_tools
 
 load_dotenv()
@@ -163,7 +164,9 @@ async def run() -> None:
 
     # Cross-session memory (remember/recall) and any configured MCP servers.
     mcp_schemas, mcp_clients = await register_mcp_tools(llm)  # keep clients alive for the session
-    tools = ToolsSchema(standard_tools=[*register_memory_tools(llm), *mcp_schemas])
+    tools = ToolsSchema(
+        standard_tools=[*register_time_tools(llm), *register_memory_tools(llm), *mcp_schemas]
+    )
 
     context = LLMContext(
         messages=[{"role": "system", "content": system_prompt()}],
