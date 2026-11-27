@@ -48,6 +48,8 @@ from dashboard.taps import BotAudioTap, BotTap, HeardTap, MicState, MicTap, Tool
 from interrupt import InterruptSwitch, SpeechGuard
 from memory import build_memory, memory_enabled
 from people import PeopleStore
+from toolbox.runtime import ToolboxRuntime
+from toolbox.store import ToolboxStore
 from people_tools import people_index, register_people_tools
 from vision_tools import set_face_hook
 from wakeword import WakeWordProcessor, gate_from_env
@@ -267,20 +269,31 @@ async def run() -> None:
     people = _people_store()
     if people is not None and vision_schemas:
         set_face_hook(_face_hook(people))
-    tools = ToolsSchema(
-        standard_tools=[
-            *register_time_tools(llm),
-            *register_memory_tools(llm),
-            *vision_schemas,
-            *register_people_tools(llm, people),
-            *mcp_schemas,
-        ]
-    )
+    # Built-in tool groups (switchable on the Skills & Tools page). MCP servers from
+    # .env (MCP_SERVERS) still work and are listed as their own group.
+    builtin = {
+        "Clock": register_time_tools(llm),
+        "Memory": register_memory_tools(llm),
+        "Eyes": vision_schemas,
+        "People": register_people_tools(llm, people),
+        "MCP (.env)": mcp_schemas,
+    }
+    tools = ToolsSchema(standard_tools=[s for group in builtin.values() for s in group])
 
+    base_prompt = system_prompt(people_index(people))
     context = LLMContext(
-        messages=[{"role": "system", "content": system_prompt(people_index(people))}],
+        messages=[{"role": "system", "content": base_prompt}],
         tools=tools,
     )
+    # Skills & Tools: MCP servers added on the dashboard, switches, SKILL.md skills.
+    toolbox = None
+    if os.getenv("TOOLBOX_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"}:
+        try:
+            toolbox = ToolboxRuntime(llm, context, ToolboxStore(), builtin, base_prompt=base_prompt)
+            await toolbox.start()
+        except Exception as exc:  # tools are optional; voice keeps working
+            print(f"[JARVIS] Toolbox disabled: {exc}", flush=True)
+            toolbox = None
     # Pipecat 1.x runs VAD in the user aggregator; TransportParams no longer has a
     # vad_analyzer field (it was silently ignored), which left Whisper deaf.
     aggregators = LLMContextAggregatorPair(
@@ -353,6 +366,7 @@ async def run() -> None:
             memory=_dashboard_memory(),
             stop_switch=stop_switch,
             people=people,
+            toolbox=toolbox,
         )
 
     # Greet on startup.

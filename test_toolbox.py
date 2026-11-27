@@ -1,0 +1,244 @@
+"""Tests for the Skills & Tools system: store, live MCP runtime, API, page.
+
+Uses the real read-only Documents MCP server (stdio) against a temp folder.
+Run:  python test_toolbox.py
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+from pipecat.adapters.schemas.function_schema import FunctionSchema
+from pipecat.adapters.schemas.tools_schema import ToolsSchema
+from pipecat.processors.aggregators.llm_context import LLMContext
+
+from dashboard.bus import EventBus
+from dashboard.server import TOKEN_HEADER, create_app
+from toolbox.runtime import ToolboxRuntime
+from toolbox.store import ToolboxStore, parse_skill_md
+
+TOKEN = "toolbox-test-token"
+HOST = {"host": "127.0.0.1:8090"}
+AUTH = {**HOST, TOKEN_HEADER: TOKEN}
+REPO = str(Path(__file__).resolve().parent)
+SKILL = """---
+name: rfi-writer
+description: Draft a construction RFI from a short spoken question.
+---
+1. Ask for the spec section if missing.
+2. Write: Subject, Question, Suggested resolution.
+"""
+SECRET_VALUE = "super-secret-value-123"
+
+
+def docs_server(root: str, name: str = "Docs test") -> dict:
+    return {"name": name, "transport": "stdio", "command": sys.executable,
+            "args": ["-m", "mcp_servers.documents_server", root], "cwd": REPO}
+
+
+class FakeLLM:
+    def __init__(self) -> None:
+        self.fns = {}
+
+    def register_function(self, name, handler, **_kw) -> None:
+        self.fns[name] = handler
+
+
+def clock_schema() -> FunctionSchema:
+    return FunctionSchema(name="get_current_time", description="clock", properties={}, required=[])
+
+
+def context_tool_names(context: LLMContext) -> list[str]:
+    tools = context.tools
+    return [t.name for t in tools.standard_tools] if isinstance(tools, ToolsSchema) else []
+
+
+# ---------------------------------------------------------------- store
+def test_store_presets_validation_secrets_skills() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        store = ToolboxStore(Path(d))
+        assert {s["preset"] for s in store.servers()} == {"documents", "fetch"}, "free tools pre-wired"
+        for bad, msg in [({"name": "", "transport": "stdio", "command": "x"}, "Name"),
+                         ({"name": "a", "transport": "ftp"}, "Type"),
+                         ({"name": "a", "transport": "stdio"}, "command"),
+                         ({"name": "a", "transport": "http", "url": "file:///x"}, "URL"),
+                         ({"name": "a", "transport": "stdio", "command": "x", "secret_env": ["bad name"]}, "Secret")]:
+            try:
+                store.add_server(bad)
+            except ValueError as exc:
+                assert msg in str(exc), (bad, exc)
+            else:
+                raise AssertionError(f"accepted {bad}")
+        store.set_secret("GITHUB_TOKEN", SECRET_VALUE)
+        assert store.secret_names() == ["GITHUB_TOKEN"]
+        assert SECRET_VALUE not in (Path(d) / "config.json").read_text(encoding="utf-8")
+        assert store.resolve_secrets(["GITHUB_TOKEN", "MISSING_ONE"]) == ({"GITHUB_TOKEN": SECRET_VALUE}, ["MISSING_ONE"])
+        assert parse_skill_md(SKILL)[0]["name"] == "rfi-writer"
+        for bad in ["no frontmatter", "---\nname: Bad Name\ndescription: x\n---\nbody", "---\nname: ok\n---\nbody",
+                    "---\nname: ok\ndescription: x\n---\n"]:
+            try:
+                parse_skill_md(bad)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError(f"accepted bad skill {bad!r}")
+        store.import_skill(SKILL)
+        assert "Suggested resolution" in store.skill_body("rfi-writer")
+        store.set_skill_enabled("rfi-writer", False)
+        store.remove_skill("rfi-writer")
+        assert store.skills() == []
+
+
+# ---------------------------------------------------------------- live runtime
+def test_runtime_adds_server_live_and_switches_tools() -> None:
+    async def scenario(tmp: Path) -> None:
+        docs = tmp / "docs"
+        docs.mkdir()
+        (docs / "punch-list.txt").write_text("Bay 7: replace damaged door closer.", encoding="utf-8")
+        store = ToolboxStore(tmp / "toolbox", seed_presets=False)
+        llm = FakeLLM()
+        context = LLMContext(messages=[{"role": "system", "content": "BASE."}],
+                             tools=ToolsSchema(standard_tools=[clock_schema()]))
+        runtime = ToolboxRuntime(llm, context, store, {"Clock": [clock_schema()]}, base_prompt="BASE.")
+        await runtime.start()
+        try:
+            assert context_tool_names(context) == ["get_current_time"]
+            server = await runtime.add_server(docs_server(str(docs)))
+            names = context_tool_names(context)
+            assert {"list_directory", "read_text_file", "search_files"} <= set(names), names
+            assert "read_text_file" in llm.fns, "tool handler registered on the brain"
+            tested = [t["name"] for t in await runtime.test_server(server["id"])]
+            assert tested == ["list_directory", "read_text_file", "search_files"], tested
+            await runtime.set_tool_enabled("search_files", False)
+            assert "search_files" not in context_tool_names(context)
+            await runtime.set_tool_enabled("get_current_time", False)
+            assert "get_current_time" not in context_tool_names(context)
+            store.import_skill(SKILL)
+            runtime.refresh_skills()
+            assert "read_skill" in context_tool_names(context)
+            system = context.messages[0]["content"]
+            assert "rfi-writer" in system and system.startswith("BASE.")
+            await runtime.set_server_enabled(server["id"], False)
+            assert "read_text_file" not in context_tool_names(context)
+            assert runtime.snapshot()["servers"][0]["status"]["state"] == "off"
+            await runtime.remove_server(server["id"])
+            assert store.servers() == []
+        finally:
+            await runtime.close()
+
+    with tempfile.TemporaryDirectory() as d:
+        asyncio.run(scenario(Path(d)))
+
+
+def test_documents_server_is_read_only_and_jailed() -> None:
+    async def scenario(tmp: Path) -> None:
+        from pipecat.services.mcp_service import MCPClient  # noqa: PLC0415
+
+        from toolbox.runtime import server_params  # noqa: PLC0415
+
+        (tmp / "inside.txt").write_text("hello from inside", encoding="utf-8")
+        (tmp.parent / "outside-secret.txt").write_text("nope", encoding="utf-8")
+        store = ToolboxStore(tmp / ".tb", seed_presets=False)
+        client = MCPClient(server_params=server_params({**docs_server(str(tmp)), "secret_env": []}, store))
+        await client.start()
+        try:
+            assert "hello from inside" in await client._call_tool_text("read_text_file", {"path": "inside.txt"})
+            escaped = await client._call_tool_text("read_text_file", {"path": "../outside-secret.txt"})
+            assert "nope" not in escaped and "outside" in escaped.lower(), escaped
+            tool_names = [t.name for t in (await client.get_tools_schema()).standard_tools]
+            assert not any(w in n for n in tool_names for w in ("write", "delete", "move", "create")), tool_names
+        finally:
+            await client.close()
+
+    with tempfile.TemporaryDirectory() as d:
+        root = Path(d) / "root"
+        root.mkdir()
+        asyncio.run(scenario(root))
+
+
+# ---------------------------------------------------------------- API + page
+class _Controller:
+    def models(self):
+        return ["brain"]
+
+    async def say(self, text):
+        pass
+
+    async def set_muted(self, muted):
+        pass
+
+    async def look(self, source):
+        pass
+
+    async def set_model(self, model):
+        pass
+
+    async def stop(self):
+        pass
+
+
+def test_api_and_page() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        (tmp / "docs").mkdir()
+        store = ToolboxStore(tmp / "toolbox", seed_presets=False)
+        context = LLMContext(messages=[{"role": "system", "content": "BASE."}])
+        runtime = ToolboxRuntime(FakeLLM(), context, store, {"Clock": [clock_schema()]}, base_prompt="BASE.")
+        with TestClient(create_app(EventBus(), _Controller(), toolbox=runtime, port=8090, token=TOKEN)) as client:
+            page = client.get("/tools", headers=HOST)
+            assert page.status_code == 200 and TOKEN in page.text and "tools.js?v=" in page.text
+            assert client.get("/api/toolbox", headers=HOST).status_code == 401
+            snap = client.get("/api/toolbox", headers=AUTH).json()["data"]
+            assert {c["id"] for c in snap["catalog"]} >= {"documents", "fetch", "gmail", "google_calendar"}
+            assert snap["builtin"][0]["name"] == "get_current_time"
+            bad = client.post("/api/toolbox/secrets", json={"name": "bad", "value": "x"}, headers=AUTH)
+            assert bad.status_code in (400, 422)
+            saved = client.post("/api/toolbox/secrets", json={"name": "API_TOKEN", "value": SECRET_VALUE}, headers=AUTH)
+            assert saved.status_code == 201 and SECRET_VALUE not in saved.text
+            body = client.get("/api/toolbox", headers=AUTH).text
+            assert "API_TOKEN" in body and SECRET_VALUE not in body, "secret values must never be returned"
+            added = client.post("/api/toolbox/servers", json=docs_server(str(tmp / "docs")), headers=AUTH)
+            assert added.status_code == 201, added.text
+            sid = added.json()["data"]["id"]
+            servers = client.get("/api/toolbox", headers=AUTH).json()["data"]["servers"]
+            server = next(s for s in servers if s["id"] == sid)
+            assert server["status"]["state"] == "connected" and len(server["tools"]) == 3, server
+            tested = client.post(f"/api/toolbox/servers/{sid}/test", json={}, headers=AUTH).json()["data"]
+            assert tested["ok"] and len(tested["tools"]) == 3
+            assert client.put("/api/toolbox/tools/search_files", json={"enabled": False}, headers=AUTH).status_code == 200
+            assert client.put("/api/toolbox/tools/nope", json={"enabled": False}, headers=AUTH).status_code == 404
+            files = [("files", ("SKILL.md", SKILL.encode(), "text/markdown")),
+                     ("files", ("bad.md", b"no frontmatter", "text/markdown"))]
+            imported = client.post("/api/toolbox/skills", files=files, headers=AUTH).json()["data"]
+            assert imported["imported"] == ["rfi-writer"] and len(imported["problems"]) == 1
+            assert client.delete(f"/api/toolbox/servers/{sid}", headers=AUTH).status_code == 200
+        config = json.loads((tmp / "toolbox" / "config.json").read_text(encoding="utf-8"))
+        assert SECRET_VALUE not in json.dumps(config)
+
+
+TESTS = [
+    ("store: presets, validation, write-only secrets, skills", test_store_presets_validation_secrets_skills),
+    ("runtime: add server live -> brain has its tools; switches", test_runtime_adds_server_live_and_switches_tools),
+    ("documents server is read-only and jailed to its folder", test_documents_server_is_read_only_and_jailed),
+    ("API + /tools page (no secret ever returned)", test_api_and_page),
+]
+
+if __name__ == "__main__":
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    passed = 0
+    for label, fn in TESTS:
+        try:
+            fn()
+            passed += 1
+            print(f"  ok - {label}")
+        except Exception as exc:
+            print(f"  FAIL - {label}: {exc!r}")
+    print(f"\ntoolbox: {passed}/{len(TESTS)} checks passed")
+    if passed != len(TESTS):
+        raise SystemExit(1)

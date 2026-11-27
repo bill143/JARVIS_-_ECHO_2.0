@@ -95,6 +95,7 @@ async def start_dashboard(
     memory=None,
     stop_switch=None,
     people=None,
+    toolbox=None,
 ) -> JarvisController | None:
     """Start the dashboard server (+ health checks, + app window). Never raises:
     if the dashboard can't start, JARVIS keeps working voice-only."""
@@ -114,7 +115,7 @@ async def start_dashboard(
     add_seen_listener(on_seen)
 
     try:
-        app = create_app(bus, controller, memory, people=people, port=port)
+        app = create_app(bus, controller, memory, people=people, toolbox=toolbox, port=port)
         server = uvicorn.Server(
             uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", ws="websockets")
         )

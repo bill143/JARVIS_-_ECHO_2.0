@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="jarvis-token" content="__JARVIS_TOKEN__">
+  <title>JARVIS · Skills &amp; Tools</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/memory.css">
+  <link rel="stylesheet" href="/static/tools.css">
+</head>
+<body class="memory-page">
+  <header class="topbar">
+    <div class="brand"><span class="brand-dot ok"></span><span class="brand-name">JARVIS</span>
+      <span class="brand-sub">Skills &amp; Tools</span></div>
+    <div class="topbar-right">
+      <span class="mono dim" id="active-count"></span>
+      <a class="btn back" href="/">← Back to console</a>
+    </div>
+  </header>
+
+  <nav class="sidebar" aria-label="Sections">
+    <a class="nav-item" href="/">Overview</a>
+    <a class="nav-item" href="/memory">Memory &amp; People</a>
+    <a class="nav-item active" href="/tools" aria-current="page">Skills &amp; Tools</a>
+  </nav>
+
+  <main class="mem-main">
+    <p class="hint">Everything JARVIS can do. Switch tools on or off, connect MCP servers (the open standard for AI tools),
+      and add skills. Changes apply to the next thing you ask, no restart needed. Config and keys stay on this PC.</p>
+
+    <section class="card" aria-labelledby="h-servers">
+      <div class="card-head"><span class="card-icon">⧉</span><h2 id="h-servers">Connected tool servers</h2>
+        <button class="btn primary" id="add-server" type="button">+ Add MCP server</button></div>
+      <div class="server-list" id="server-list"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-catalog">
+      <div class="card-head"><span class="card-icon">☆</span><h2 id="h-catalog">One-click tools</h2></div>
+      <div class="catalog" id="catalog"></div>
+    </section>
+
+    <section class="card" aria-labelledby="h-builtin">
+      <div class="card-head"><span class="card-icon">⚙</span><h2 id="h-builtin">Built-in tools</h2></div>
+      <ul class="tool-list" id="builtin-list"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="h-skills">
+      <div class="card-head"><span class="card-icon">✎</span><h2 id="h-skills">Skills</h2>
+        <label class="btn" for="skill-input">Import SKILL.md / .zip</label>
+        <input id="skill-input" type="file" accept=".md,.zip" multiple hidden></div>
+      <p class="hint">A skill is a SKILL.md file (agentskills.io format): a name, a description and written instructions.
+        JARVIS sees the name and description and reads the full instructions when a request needs them.</p>
+      <p class="hint" id="skill-status" role="status"></p>
+      <ul class="tool-list" id="skill-list"></ul>
+    </section>
+
+    <section class="card" aria-labelledby="h-secrets">
+      <div class="card-head"><span class="card-icon">🔒</span><h2 id="h-secrets">Secrets</h2></div>
+      <p class="hint">API keys and tokens for tool servers. Stored only on this PC and never shown again after saving.</p>
+      <form class="add-row" id="secret-form" autocomplete="off">
+        <label class="sr-only" for="secret-name">Secret name</label>
+        <input id="secret-name" placeholder="NAME_LIKE_THIS" maxlength="64" pattern="[A-Z][A-Z0-9_]{1,63}" required>
+        <label class="sr-only" for="secret-value">Secret value</label>
+        <input id="secret-value" type="password" placeholder="value" maxlength="8000" required autocomplete="new-password">
+        <button class="btn" type="submit">Save secret</button>
+      </form>
+      <ul class="tool-list" id="secret-list"></ul>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="card-head"><h2 id="modal-title">Add MCP server</h2>
+        <button class="btn ghost" id="modal-close" type="button" aria-label="Close">✕</button></div>
+      <form id="server-form" autocomplete="off">
+        <div class="form-grid">
+          <label>Name<input name="name" required maxlength="64" placeholder="e.g. GitHub"></label>
+          <label>Type
+            <select name="transport">
+              <option value="stdio">Local program (stdio)</option>
+              <option value="http">Web URL (streamable HTTP)</option>
+              <option value="sse">Web URL (SSE)</option>
+            </select></label>
+          <label class="wide stdio-only">Command <span class="dim">(e.g. npx, uvx, python)</span><input name="command" maxlength="500"></label>
+          <label class="wide stdio-only">Arguments <span class="dim">(one per line)</span><textarea name="args" rows="3"></textarea></label>
+          <label class="wide url-only" hidden>URL<input name="url" maxlength="500" placeholder="https://…/mcp"></label>
+          <label class="wide stdio-only">Secrets passed as environment variables <span class="dim">(names, comma-separated)</span>
+            <input name="secret_env" maxlength="400" placeholder="GITHUB_TOKEN"></label>
+          <label class="wide url-only" hidden>Secret sent as Bearer token <span class="dim">(name)</span>
+            <input name="auth_secret" maxlength="64" placeholder="MY_SERVICE_TOKEN"></label>
+        </div>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <div class="modal-actions">
+          <span class="spacer"></span>
+          <button class="btn" type="button" id="modal-cancel">Cancel</button>
+          <button class="btn primary" type="submit">Add &amp; connect</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/tools.js"></script>
+</body>
+</html>

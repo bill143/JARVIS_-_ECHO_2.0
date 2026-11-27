@@ -22,13 +22,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from dashboard.bus import EventBus
 from dashboard.memory_api import add_memory_routes
+from dashboard.toolbox_api import add_toolbox_routes
 
 logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent / "static"
 TOKEN_HEADER = "X-JARVIS-Token"
 TOKEN_PLACEHOLDER = "__JARVIS_TOKEN__"
-STATIC_ASSETS = ("app.css", "app.js", "memory.css", "memory.js")
+STATIC_ASSETS = ("app.css", "app.js", "memory.css", "memory.js", "tools.css", "tools.js")
 MAX_SAY_CHARS = 2000
 MEMORY_LIMIT_MAX = 200
 
@@ -83,6 +84,7 @@ def create_app(
     memory=None,
     *,
     people=None,
+    toolbox=None,
     port: int = 8090,
     token: str | None = None,
 ) -> FastAPI:
@@ -130,6 +132,7 @@ def create_app(
     add_memory_routes(
         app, authorized=_authorized, ok=_ok, err=_err, render_page=render_page, memory=memory, people=people
     )
+    add_toolbox_routes(app, authorized=_authorized, ok=_ok, err=_err, render_page=render_page, toolbox=toolbox)
 
     @app.get("/api/state")
     async def state(request: Request):
