@@ -31,6 +31,7 @@ import yaml
 TRANSPORTS = ("stdio", "http", "sse")
 _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _().-]{0,63}$")
 _SECRET_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
+GITHUB_TOKEN_NAMES = ("GITHUB_PERSONAL_ACCESS_TOKEN", "GITHUB_TOKEN", "GH_TOKEN")
 _SKILL_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 MAX_SKILL_FILE_BYTES = 512 * 1024
 MAX_SKILL_ZIP_BYTES = 200 * 1024 * 1024
@@ -242,8 +243,24 @@ class ToolboxStore:
     def resolve_secrets(self, names: list[str]) -> tuple[dict[str, str], list[str]]:
         """``({name: value}, [missing names])`` for launching a server."""
         secrets = self._secrets()
-        found = {n: secrets[n] for n in names if n in secrets}
-        return found, [n for n in names if n not in secrets]
+        found = {}
+        for n in names:
+            value = secrets.get(n) or self._alias_value(n, secrets)
+            if value:
+                found[n] = value
+        return found, [n for n in names if n not in found]
+
+    @staticmethod
+    def _alias_value(name: str, secrets: dict) -> str | None:
+        """A GitHub token saved under any name containing GITHUB (e.g. JARVIS_APP_GITHUB_API) also
+        answers for the names GitHub tools look for (GITHUB_PERSONAL_ACCESS_TOKEN, GITHUB_TOKEN, GH_TOKEN)."""
+        if name not in GITHUB_TOKEN_NAMES:
+            return None
+        for alias in GITHUB_TOKEN_NAMES:
+            if secrets.get(alias):
+                return secrets[alias]
+        github = sorted(k for k in secrets if "GITHUB" in k and secrets[k])
+        return secrets[github[0]] if github else None
 
     # ---- skills (SKILL.md) ---------------------------------------------
     def skills(self) -> list[dict]:
