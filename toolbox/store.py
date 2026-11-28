@@ -276,6 +276,10 @@ class ToolboxStore:
             (folder / "SKILL.md").write_text(skill_md, encoding="utf-8")
             entry = {"name": name, "description": meta["description"], "enabled": True, "source": source,
                      "added_at": _now()}
+            previous = next((s for s in self._config["skills"] if s["name"] == name), None)
+            if previous and previous.get("builtin"):  # re-imports keep the Built-in pin
+                entry["builtin"] = True
+                entry["pack"] = previous.get("pack", "")
             self._config["skills"] = [s for s in self._config["skills"] if s["name"] != name] + [entry]
             self._save()
             return dict(entry)
@@ -331,6 +335,8 @@ class ToolboxStore:
                 handled.add(name)
         removed: list[str] = []
         for name, entry in registered.items():
+            if entry.get("builtin"):
+                continue  # Built-in skills stay even if their dropped folder moves
             origin = str(entry.get("source", ""))
             dropped_from = origin[len("folder:"):] if origin.startswith("folder:") else ""
             gone = f"{name}/SKILL.md" not in seen or (
@@ -417,8 +423,25 @@ class ToolboxStore:
                     return dict(s)
         raise KeyError(name)
 
-    def remove_skill(self, name: str) -> None:
+    def set_skill_builtin(self, name: str, builtin: bool, pack: str = "") -> dict:
+        """Pin a skill as Built-in (listed first, never removed by the folder watcher) or unpin it."""
         with self._lock:
+            for s in self._config["skills"]:
+                if s["name"] == name:
+                    s["builtin"] = bool(builtin)
+                    if builtin and pack:
+                        s["pack"] = pack
+                    if not builtin:
+                        s.pop("pack", None)
+                    self._save()
+                    return dict(s)
+        raise KeyError(name)
+
+    def remove_skill(self, name: str, force: bool = False) -> None:
+        with self._lock:
+            entry = next((s for s in self._config["skills"] if s["name"] == name), None)
+            if entry and entry.get("builtin") and not force:
+                raise ValueError(f"{name} is pinned as Built-in. Unpin it first.")
             before = len(self._config["skills"])
             self._config["skills"] = [s for s in self._config["skills"] if s["name"] != name]
             if len(self._config["skills"]) == before:

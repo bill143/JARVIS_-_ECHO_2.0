@@ -42,6 +42,12 @@ class ToggleBody(BaseModel):
     enabled: bool
 
 
+class PinBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    builtin: bool
+    pack: str = Field(default="", max_length=60)
+
+
 class SecretBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     name: str = Field(min_length=2, max_length=64)
@@ -212,6 +218,17 @@ def add_toolbox_routes(app: FastAPI, *, authorized: Callable, ok: Callable, err:
             toolbox.store.set_skill_enabled(name, body.enabled)
             toolbox.refresh_skills()
             return ok({"name": name, "enabled": body.enabled})
+        return await guarded(request, action)
+
+    @app.post("/api/toolbox/skills/{name}/builtin")
+    async def pin_skill(name: str, request: Request):
+        async def action():
+            body, problem = await body_of(request, PinBody)
+            if problem:
+                return problem
+            entry = toolbox.store.set_skill_builtin(name, body.builtin, body.pack)
+            toolbox.refresh_skills()
+            return ok(entry)
         return await guarded(request, action)
 
     @app.delete("/api/toolbox/skills/{name}")

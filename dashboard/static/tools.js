@@ -125,13 +125,28 @@ async function load() {
   $("catalog").replaceChildren(...data.catalog.map(catalogItem));
   $("builtin-list").replaceChildren(...data.builtin.map((t) => row(`${t.name}`, `${t.group} · ${t.description}`,
     toggle(t.enabled, `${t.name} on/off`, (on) => api(`/api/toolbox/tools/${encodeURIComponent(t.name)}`, { method: "PUT", body: { enabled: on } })))));
-  $("skill-list").replaceChildren(...(data.skills.length ? data.skills.map((s) => row(s.name, s.description,
-    toggle(s.enabled, `${s.name} on/off`, (on) => api(`/api/toolbox/skills/${encodeURIComponent(s.name)}`, { method: "PUT", body: { enabled: on } })),
-    btn("Remove", "small danger", async () => {
-      if (!confirm(`Remove skill ${s.name}?`)) return;
-      try { await api(`/api/toolbox/skills/${encodeURIComponent(s.name)}`, { method: "DELETE" }); } catch (err) { alert(err.message); }
+  const skills = [...data.skills].sort((a, b) => (b.builtin ? 1 : 0) - (a.builtin ? 1 : 0));
+  $("skill-list").replaceChildren(...(skills.length ? skills.map((s) => {
+    const actions = el("span", "skill-actions");
+    actions.append(btn(s.builtin ? "Unpin" : "Pin as Built-in", "small", async () => {
+      try { await api(`/api/toolbox/skills/${encodeURIComponent(s.name)}/builtin`, { method: "POST", body: { builtin: !s.builtin } }); }
+      catch (err) { alert(err.message); }
       load();
-    }))) : [el("li", "empty", "No skills yet. Import a SKILL.md file or a .zip of skill folders.")]));
+    }));
+    if (!s.builtin) {
+      actions.append(btn("Remove", "small danger", async () => {
+        if (!confirm(`Remove skill ${s.name}?`)) return;
+        try { await api(`/api/toolbox/skills/${encodeURIComponent(s.name)}`, { method: "DELETE" }); } catch (err) { alert(err.message); }
+        load();
+      }));
+    }
+    const title = s.builtin ? `${s.name}  ·  BUILT-IN${s.pack ? " · " + s.pack : ""}` : s.name;
+    const li = row(title, s.description,
+      toggle(s.enabled, `${s.name} on/off`, (on) => api(`/api/toolbox/skills/${encodeURIComponent(s.name)}`, { method: "PUT", body: { enabled: on } })),
+      actions);
+    if (s.builtin) li.classList.add("builtin");
+    return li;
+  }) : [el("li", "empty", "No skills yet. Import a SKILL.md file or a .zip of skill folders.")]));
   $("secret-list").replaceChildren(...(data.secrets.length ? data.secrets.map((name) => row(name, "set · value hidden",
     el("span", "dot ok"), btn("Delete", "small danger", async () => {
       if (!confirm(`Delete secret ${name}?`)) return;
@@ -219,7 +234,7 @@ let skillsSeen = "";
 setInterval(async () => {
   try {
     const data = await api("/api/toolbox");
-    const sig = JSON.stringify(data.skills.map((x) => [x.name, x.enabled, x.description]));
+    const sig = JSON.stringify(data.skills.map((x) => [x.name, x.enabled, x.description, Boolean(x.builtin)]));
     if (skillsSeen && sig !== skillsSeen) load();
     skillsSeen = sig;
   } catch (_) { /* offline: the next tick retries */ }

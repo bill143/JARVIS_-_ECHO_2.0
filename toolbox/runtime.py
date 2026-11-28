@@ -183,9 +183,11 @@ class ToolboxRuntime:
         if not skills:
             return ""
         if len(skills) > SKILLS_INLINE_MAX:
+            pinned = [x["name"] for x in skills if x.get("builtin")]
+            built_in = f" Built-in skills: {', '.join(pinned)}." if pinned else ""
             return (f" You have {len(skills)} skills (written procedures for construction, estimating, "
                     f"scheduling, documents, data and more). When a request could use one, call find_skills "
-                    f"with a few keywords, then read_skill with the best match's name, and follow it.")
+                    f"with a few keywords, then read_skill with the best match's name, and follow it.{built_in}")
         listing = "; ".join(f"{s['name']}: {s['description']}" for s in skills)
         return (f" Skills you have (call read_skill with the name to get the full instructions before "
                 f"using one): {listing}.")

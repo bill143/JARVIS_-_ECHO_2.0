@@ -27,3 +27,6 @@
 .test-result.ok { color: var(--green); }
 .test-result.bad { color: var(--red); }
 select { width: 100%; }
+
+.tool-list li.builtin { border-color: rgba(0, 242, 254, 0.45); }
+.skill-actions { display: inline-flex; gap: 6px; }

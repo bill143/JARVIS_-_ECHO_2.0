@@ -298,6 +298,31 @@ def test_large_skill_library_uses_search_not_prompt() -> None:
         assert rt.ToolboxRuntime.find_skills(fake, "the and of") == []
 
 
+def test_builtin_skills_are_pinned() -> None:
+    import shutil
+
+    with tempfile.TemporaryDirectory() as tmp:
+        store = ToolboxStore(Path(tmp), seed_presets=False)
+        (store.skills_dir / "pack" / "brainstorming").mkdir(parents=True)
+        (store.skills_dir / "pack" / "brainstorming" / "SKILL.md").write_text(_skill_md("brainstorming"), encoding="utf-8")
+        store.scan_skill_folder()
+        pinned = store.set_skill_builtin("brainstorming", True, "superpowers")
+        assert pinned["builtin"] and pinned["pack"] == "superpowers"
+        try:
+            store.remove_skill("brainstorming")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("a Built-in skill was removed without unpinning")
+        shutil.rmtree(store.skills_dir / "pack")  # its dropped folder disappears
+        assert store.scan_skill_folder()["removed"] == []  # the watcher keeps Built-in skills
+        store.import_skill(_skill_md("brainstorming").replace("Test skill", "Updated"))
+        assert next(x for x in store.skills() if x["name"] == "brainstorming")["builtin"]  # pin survives re-import
+        store.set_skill_builtin("brainstorming", False)
+        store.remove_skill("brainstorming")
+        assert store.skills() == []
+
+
 TESTS = [
     ("store: presets, validation, write-only secrets, skills", test_store_presets_validation_secrets_skills),
     ("runtime: add server live -> brain has its tools; switches", test_runtime_adds_server_live_and_switches_tools),
@@ -305,6 +330,7 @@ TESTS = [
     ("API + /tools page (no secret ever returned)", test_api_and_page),
     ("skills folder: nested + zips load, edits update, deletions remove", test_skills_folder_scan_nested_and_zip),
     ("big skill library: search tool instead of listing all in the prompt", test_large_skill_library_uses_search_not_prompt),
+    ("Built-in skills: pinned, kept by the watcher, removable only after unpin", test_builtin_skills_are_pinned),
 ]
 
 if __name__ == "__main__":
