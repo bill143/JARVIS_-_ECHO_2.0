@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import re
 
 from pipecat.adapters.schemas.function_schema import FunctionSchema
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
@@ -27,6 +28,16 @@ logger = logging.getLogger(__name__)
 
 CONNECT_TIMEOUT_SECS = 45.0
 READ_SKILL = "read_skill"
+FIND_SKILLS = "find_skills"
+# Up to this many enabled skills, every name + description goes in the system
+# prompt. Beyond it (a 245-skill library is ~11k tokens on every request: slow,
+# and over the free brain's per-minute token budget) the brain gets a find_skills
+# search tool instead and only sees the matches it asks for.
+SKILLS_INLINE_MAX = int(os.getenv("SKILLS_INLINE_MAX", "25") or 25)
+FIND_SKILLS_LIMIT = 8
+_WORD = re.compile(r"[a-z0-9]+")
+_STOP = {"a", "an", "and", "the", "of", "for", "to", "in", "on", "with", "by", "or", "is", "it", "my", "me",
+         "i", "you", "what", "how", "can", "do", "please", "jarvis", "use", "using", "from", "into", "at"}
 SKILLS_WATCH_SECS = float(os.getenv("SKILLS_WATCH_SECS", "15") or 15)
 
 
@@ -77,6 +88,7 @@ class ToolboxRuntime:
         self._status: dict[str, dict] = {}
         self._lock = asyncio.Lock()
         llm.register_function(READ_SKILL, self._read_skill)
+        llm.register_function(FIND_SKILLS, self._find_skills)
         self._watch_task: asyncio.Task | None = None
         self._folder_signature: tuple | None = None
 
@@ -159,17 +171,68 @@ class ToolboxRuntime:
                 if tool.name not in off and tool.name not in seen:
                     schemas.append(tool)
                     seen.add(tool.name)
-        if any(s["enabled"] for s in self.store.skills()):
+        enabled = sum(1 for s in self.store.skills() if s["enabled"])
+        if enabled:
             schemas.append(self._read_skill_schema())
+        if enabled > SKILLS_INLINE_MAX:
+            schemas.append(self._find_skills_schema())
         return schemas
 
     def _skills_prompt(self) -> str:
         skills = [s for s in self.store.skills() if s["enabled"]]
         if not skills:
             return ""
+        if len(skills) > SKILLS_INLINE_MAX:
+            return (f" You have {len(skills)} skills (written procedures for construction, estimating, "
+                    f"scheduling, documents, data and more). When a request could use one, call find_skills "
+                    f"with a few keywords, then read_skill with the best match's name, and follow it.")
         listing = "; ".join(f"{s['name']}: {s['description']}" for s in skills)
         return (f" Skills you have (call read_skill with the name to get the full instructions before "
                 f"using one): {listing}.")
+
+    @staticmethod
+    def _find_skills_schema() -> FunctionSchema:
+        return FunctionSchema(
+            name=FIND_SKILLS,
+            description="Search your skills library by keywords; returns the best-matching skill names and descriptions.",
+            properties={"query": {"type": "string", "description": "A few keywords, e.g. 'RFI response' or 'cost estimate excel'."}},
+            required=["query"],
+        )
+
+    def find_skills(self, query: str, limit: int = FIND_SKILLS_LIMIT) -> list[dict]:
+        """Rank enabled skills by keyword overlap with ``query`` (name hits weigh more)."""
+        words = [w for w in _WORD.findall((query or "").lower()) if w not in _STOP]
+        if not words:
+            return []
+        scored = []
+        for s in self.store.skills():
+            if not s["enabled"]:
+                continue
+            name_words = set(_WORD.findall(s["name"].lower()))
+            desc_words = _WORD.findall(s["description"].lower())
+            desc_set = set(desc_words)
+            score = 0.0
+            for w in words:
+                if w in name_words:
+                    score += 3
+                elif any(n.startswith(w) or w.startswith(n) for n in name_words if len(n) > 2 and len(w) > 2):
+                    score += 2
+                if w in desc_set:
+                    score += 1
+                elif len(w) > 3 and any(d.startswith(w[:5]) for d in desc_set):
+                    score += 0.5
+            if score:
+                scored.append((score, s["name"], s["description"]))
+        scored.sort(key=lambda x: (-x[0], x[1]))
+        return [{"name": n, "description": d} for _, n, d in scored[:limit]]
+
+    async def _find_skills(self, params: FunctionCallParams) -> None:
+        query = str((params.arguments or {}).get("query", "")).strip()
+        matches = await asyncio.to_thread(self.find_skills, query)
+        if matches:
+            await params.result_callback({"matches": matches})
+        else:
+            await params.result_callback({"matches": [], "note": "No skill matched; answer without one."})
 
     def _apply(self) -> None:
         self._context.set_tools(ToolsSchema(standard_tools=self._active_schemas()))
@@ -180,7 +243,7 @@ class ToolboxRuntime:
     def _read_skill_schema() -> FunctionSchema:
         return FunctionSchema(
             name=READ_SKILL,
-            description="Get the full instructions of one of your skills (listed in your instructions) by name.",
+            description="Get the full instructions of one of your skills by its exact name.",
             properties={"name": {"type": "string", "description": "The skill's name."}},
             required=["name"],
         )

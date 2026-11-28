@@ -278,12 +278,33 @@ def test_skills_folder_scan_nested_and_zip() -> None:
         assert store.skills() == []
 
 
+def test_large_skill_library_uses_search_not_prompt() -> None:
+    import types
+
+    from toolbox import runtime as rt
+
+    with tempfile.TemporaryDirectory() as tmp:
+        store = ToolboxStore(Path(tmp), seed_presets=False)
+        fake = types.SimpleNamespace(store=store)
+        store.import_skill(_skill_md("rfi-drafter").replace("Test skill rfi-drafter", "Draft a construction RFI"))
+        small = rt.ToolboxRuntime._skills_prompt(fake)
+        assert "rfi-drafter" in small and "find_skills" not in small  # few skills: listed inline
+        for i in range(rt.SKILLS_INLINE_MAX + 5):
+            store.import_skill(_skill_md(f"filler-skill-{i}"))
+        big = rt.ToolboxRuntime._skills_prompt(fake)
+        assert "find_skills" in big and "filler-skill-3" not in big and len(big) < 400, big
+        hits = [m["name"] for m in rt.ToolboxRuntime.find_skills(fake, "please draft an RFI")]
+        assert hits and hits[0] == "rfi-drafter", hits
+        assert rt.ToolboxRuntime.find_skills(fake, "the and of") == []
+
+
 TESTS = [
     ("store: presets, validation, write-only secrets, skills", test_store_presets_validation_secrets_skills),
     ("runtime: add server live -> brain has its tools; switches", test_runtime_adds_server_live_and_switches_tools),
     ("documents server is read-only and jailed to its folder", test_documents_server_is_read_only_and_jailed),
     ("API + /tools page (no secret ever returned)", test_api_and_page),
     ("skills folder: nested + zips load, edits update, deletions remove", test_skills_folder_scan_nested_and_zip),
+    ("big skill library: search tool instead of listing all in the prompt", test_large_skill_library_uses_search_not_prompt),
 ]
 
 if __name__ == "__main__":
