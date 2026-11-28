@@ -64,6 +64,34 @@ class ObsidianMemory(MemoryStore):
         path = self.vault / f"{record.created_at[:10]}-{record.id[:8]}.md"
         path.write_text("\n".join(lines), encoding="utf-8")
 
+    def _path_for(self, record_id: str) -> Path | None:
+        for path in self.vault.glob(f"*-{record_id[:8]}.md"):
+            rec = self._read(path)
+            if rec is not None and rec.id == record_id and _is_jarvis_memory(rec, path):
+                return path
+        return None
+
+    # ---- editing (dashboard Facts tab) ----
+    def update(self, record_id: str, text: str) -> MemoryRecord:
+        """Replace a memory's text, keeping its id, timestamp and metadata."""
+        text = (text or "").strip()
+        if not text:
+            raise ValueError("cannot store an empty memory")
+        path = self._path_for(record_id)
+        if path is None:
+            raise KeyError(record_id)
+        current = self._read(path)
+        updated = MemoryRecord(id=current.id, text=text, created_at=current.created_at, metadata=current.metadata)
+        self._write(updated)
+        return updated
+
+    def delete(self, record_id: str) -> None:
+        """Remove a memory note written by JARVIS (never touches other notes)."""
+        path = self._path_for(record_id)
+        if path is None:
+            raise KeyError(record_id)
+        path.unlink()
+
     # ---- reading ----
     def _read(self, path: Path) -> MemoryRecord | None:
         try:
@@ -90,15 +118,22 @@ class ObsidianMemory(MemoryStore):
         )
 
     def _all(self) -> list[MemoryRecord]:
+        """JARVIS's own memories only.
+
+        The vault is usually a real Obsidian vault shared with the user's notes
+        (Obsidian's "Welcome.md", drafts, empty notes). Only notes written by
+        ``add`` count: they always carry ``id`` + a parseable ``created_at`` in
+        their frontmatter and a non-empty body.
+        """
         records = []
         for path in self.vault.glob("*.md"):
             rec = self._read(path)
-            if rec is not None:
+            if rec is not None and _is_jarvis_memory(rec, path):
                 records.append(rec)
         return records
 
     def count(self) -> int:
-        return sum(1 for _ in self.vault.glob("*.md"))
+        return len(self._all())
 
     def recent(self, k: int = 5) -> list[MemoryRecord]:
         records = self._all()
@@ -125,3 +160,21 @@ class ObsidianMemory(MemoryStore):
         # Primary: score. Tiebreak: recency.
         scored.sort(key=lambda r: (r.score, r.created_at), reverse=True)
         return scored[: max(0, k)]
+
+
+def _is_jarvis_memory(rec: MemoryRecord, path: Path) -> bool:
+    """True for notes written by ``ObsidianMemory.add``; False for vault boilerplate.
+
+    ``add`` always writes frontmatter ``id`` (different from the file stem, which
+    is ``<date>-<id8>``) and an ISO ``created_at``. Obsidian's Welcome.md and the
+    user's own notes have neither, so they never surface as JARVIS "facts".
+    """
+    from datetime import datetime  # noqa: PLC0415
+
+    if not rec.text.strip() or rec.id == path.stem or not rec.created_at:
+        return False
+    try:
+        datetime.fromisoformat(rec.created_at)
+    except ValueError:
+        return False
+    return True

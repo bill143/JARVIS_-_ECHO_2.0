@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="jarvis-token" content="__JARVIS_TOKEN__">
+  <title>JARVIS · Memory</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/memory.css">
+</head>
+<body class="memory-page">
+  <header class="topbar">
+    <div class="brand"><span class="brand-dot ok"></span><span class="brand-name">JARVIS</span>
+      <span class="brand-sub">Memory</span></div>
+    <div class="topbar-right">
+      <a class="btn back" href="/">← Back to console</a>
+      <time class="clock mono" id="clock"></time>
+    </div>
+  </header>
+
+  <nav class="sidebar" aria-label="Sections">
+    <a class="nav-item" href="/">Overview</a>
+    <a class="nav-item" href="/tools">Skills &amp; Tools</a>
+    <a class="nav-item active" href="/memory" aria-current="page">Memory
+      <span class="badge" id="badge-total" hidden>0</span></a>
+  </nav>
+
+  <main class="mem-main">
+    <div class="tabs" role="tablist" aria-label="Memory sections">
+      <button class="tab active" role="tab" id="tab-facts" aria-selected="true" aria-controls="panel-facts">Facts
+        <span class="badge" id="count-facts">0</span></button>
+      <button class="tab" role="tab" id="tab-people" aria-selected="false" aria-controls="panel-people">People
+        <span class="badge" id="count-people">0</span></button>
+    </div>
+
+    <section class="card tab-panel" id="panel-facts" role="tabpanel" aria-labelledby="tab-facts">
+      <div class="card-head"><span class="card-icon">❖</span><h2>Remembered facts</h2>
+        <input id="fact-search" class="search inline" placeholder="Search facts…" maxlength="200" aria-label="Search facts"></div>
+      <form class="add-row" id="fact-form" autocomplete="off">
+        <label class="sr-only" for="fact-input">New fact</label>
+        <input id="fact-input" maxlength="2000" placeholder="Add a fact JARVIS should remember…">
+        <button class="btn" type="submit">Add fact</button>
+      </form>
+      <ul class="fact-list" id="fact-list"></ul>
+    </section>
+
+    <section class="card tab-panel" id="panel-people" role="tabpanel" aria-labelledby="tab-people" hidden>
+      <div class="card-head"><span class="card-icon">☺</span><h2>People</h2>
+        <input id="people-search" class="search inline" placeholder="Search people…" maxlength="200" aria-label="Search people">
+        <label class="btn" for="recognize-input" title="Upload a photo to see who JARVIS recognizes">Test recognition</label>
+        <input id="recognize-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        <button class="btn primary" id="new-person" type="button">+ New person</button></div>
+      <p class="hint">Photos and profiles stay on this PC (local database + photo folder). Each person is also
+        written to your Obsidian vault under <span class="mono">JARVIS/People</span> so JARVIS can read it.
+        Face recognition runs offline and only matches people you enroll here.</p>
+      <p class="recognize-result" id="recognize-result" role="status"></p>
+      <div class="group-bar" role="toolbar" aria-label="Filter people by group">
+        <div class="group-chips" id="group-chips"></div>
+        <div class="group-actions">
+          <button class="btn small" id="group-rename" type="button" hidden>Rename group</button>
+          <button class="btn small danger" id="group-delete" type="button" hidden>Delete group</button>
+          <button class="btn small" id="group-new" type="button">+ New group</button>
+          <button class="btn small" id="select-toggle" type="button" aria-pressed="false">Select people</button>
+        </div>
+      </div>
+      <div class="bulk-bar" id="bulk-bar" hidden>
+        <span id="bulk-count">0 selected</span>
+        <label class="sr-only" for="bulk-group">Group to add the selected people to</label>
+        <select id="bulk-group"></select>
+        <button class="btn small primary" id="bulk-add" type="button">Add to group</button>
+        <button class="btn small" id="bulk-all" type="button">Select all shown</button>
+        <button class="btn small ghost" id="bulk-clear" type="button">Clear</button>
+      </div>
+      <div class="people-grid" id="people-grid"></div>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="card-head"><h2 id="modal-title">New person</h2>
+        <button class="btn ghost" id="modal-close" type="button" aria-label="Close">✕</button></div>
+      <form id="person-form" autocomplete="off">
+        <div class="form-grid">
+          <label>Name<input name="name" required maxlength="120"></label>
+          <label>Relationship<input name="relationship" maxlength="120" placeholder="e.g. foreman, wife, client"></label>
+          <label>Company<input name="company" maxlength="160"></label>
+          <label>Role<input name="role" maxlength="160"></label>
+          <label>Phone<input name="phone" maxlength="60" inputmode="tel"></label>
+          <label>Email<input name="email" maxlength="200" type="email"></label>
+          <label class="wide">Notes<textarea name="notes" rows="3" maxlength="8000"></textarea></label>
+          <label class="wide">Facts <span class="dim">(one per line)</span><textarea name="facts" rows="3"></textarea></label>
+          <fieldset class="wide group-pick"><legend>Groups</legend><div id="group-pick"></div></fieldset>
+        </div>
+        <div class="photos-block" id="photos-block">
+          <div class="label">Photos for recognition</div>
+          <div class="photo-strip" id="photo-strip"></div>
+          <label class="dropzone" id="dropzone" for="photo-input" tabindex="0">
+            Drop photos here or <span class="link">choose files</span>
+            <input id="photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+          </label>
+          <p class="hint" id="photo-status" role="status"></p>
+        </div>
+        <p class="form-error" id="form-error" role="alert"></p>
+        <div class="modal-actions">
+          <button class="btn danger" id="delete-person" type="button" hidden>Delete person</button>
+          <span class="spacer"></span>
+          <button class="btn" type="button" id="modal-cancel">Cancel</button>
+          <button class="btn primary" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/memory.js"></script>
+</body>
+</html>

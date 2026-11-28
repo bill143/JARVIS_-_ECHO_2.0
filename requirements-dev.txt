@@ -1,0 +1,3 @@
+# Test-only dependencies (python test_people.py uses skimage's public-domain sample portrait).
+-r requirements.txt
+scikit-image>=0.24

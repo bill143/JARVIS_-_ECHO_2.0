@@ -88,6 +88,42 @@ model_list:
       model: openai/gpt-4.1-mini
       api_key: os.environ/OPENAI_API_KEY
 
+  # Local / free (Ollama on this machine, RTX 5080). No key, no cost: JARVIS's
+  # default for development. Pull the model first: `ollama pull qwen2.5:14b-instruct`.
+  # When ECHO itself runs in Docker, point api_base at http://host.docker.internal:11434.
+  - model_name: local-dev
+    litellm_params:
+      model: ollama_chat/qwen2.5:14b-instruct
+      api_base: http://localhost:11434
+      temperature: 0.3
+
+  # Groq free tier (cloud, fast): optional fallback for local-dev.
+  - model_name: groq-dev
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      # Reasoning model: keep thinking short so voice replies stay fast.
+      reasoning_effort: low
+      api_key: os.environ/GROQ_API_KEY
+      temperature: 0.3
+
+  # JARVIS's default brain: Groq free tier (gpt-oss-120b, strong tool use). Groq stopped
+  # serving llama-3.3-70b-versatile to this key (model_not_found, Nov 2026).
+  # Falls back to local-dev, then funded clouds once they have credits.
+  - model_name: brain
+    litellm_params:
+      model: groq/openai/gpt-oss-120b
+      # Reasoning model: keep thinking short so voice replies stay fast.
+      reasoning_effort: low
+      api_key: os.environ/GROQ_API_KEY
+      # Groq's default temperature (1.0) occasionally emitted stray multilingual
+      # junk tokens at the start of a spoken reply; a voice assistant wants 0.3.
+      temperature: 0.3
+  # JARVIS's eyes: local Ollama vision model (pull: `ollama pull qwen2.5vl:7b`).
+  - model_name: vision-dev
+    litellm_params:
+      model: ollama_chat/qwen2.5vl:7b
+      api_base: http://localhost:11434
+
   # ---------------- 6 tier aliases (semantic routes) ----------------
   # Each tier points to a PRIMARY model; the fallback chain lives in
   # router_settings.fallbacks below.
@@ -140,6 +176,10 @@ router_settings:
     - google-gemini-flash: [openai-gpt4o-mini, anthropic-haiku]
     - google-gemini-flash-lite: [google-gemini-flash, openai-gpt4o-mini]
     - gemini-3.1-pro-preview: [google-gemini-25-pro, google-gemini-pro]
+    # Local first; paid clouds only as optional fallbacks when funded.
+    - local-dev: [groq-dev, gemini-3.1-pro-preview, anthropic-haiku]
+    - groq-dev: [local-dev]
+    - brain: [local-dev, anthropic-sonnet, gemini-3.1-pro-preview]
     - deepseek-chat: [openai-gpt4o-mini, anthropic-haiku]
     - deepseek-reasoner: [openai-o3-mini, openai-o1]
     - xai-grok: [openai-gpt4o, anthropic-sonnet]

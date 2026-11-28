@@ -79,6 +79,16 @@ def run_tests() -> None:
     g = _gate(clock)
     check("mid-sentence wake triggers", g.feed("ok hey jarvis stop") == "stop")
 
+    # 9. Whisper mishearings of the name still wake (seen live: "Hey Jarvan").
+    clock = FakeClock()
+    g = _gate(clock)
+    check("fuzzy wake: 'Hey Jarvan, what time is it?'", g.feed(" Hey Jarvan, what time is it? ") == "what time is it")
+
+    # 10. ...but unrelated short words do not.
+    clock = FakeClock()
+    g = _gate(clock)
+    check("no fuzzy wake on 'hey jars of jam'", g.feed("hey jars of jam") is None)
+
     # Bonus sanity check on the parser (not counted in the headline 8).
     check("parse_phrases handles empty", parse_phrases("") == [])
     check("parse_phrases trims + lowercases", parse_phrases("Hey JARVIS, Jarvis") == ["hey jarvis", "jarvis"])
