@@ -197,6 +197,10 @@ async function rescanSkills(quiet) {
   } catch (err) { if (!quiet) $("skill-status").textContent = err.message; }
 }
 $("skill-rescan").addEventListener("click", () => rescanSkills(false));
+$("skill-open-folder").addEventListener("click", async () => {
+  try { await api("/api/toolbox/skills/open-folder", { method: "POST", body: {} }); }
+  catch (err) { $("skill-status").textContent = err.message; }
+});
 $("secret-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = $("secret-name"); const value = $("secret-value");

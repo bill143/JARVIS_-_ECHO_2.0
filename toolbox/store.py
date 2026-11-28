@@ -1,6 +1,6 @@
 """JARVIS toolbox config: MCP servers, tool on/off switches, skills, secrets.
 
-Everything lives locally under ``%LOCALAPPDATA%\\JARVIS\\toolbox`` (or
+Everything lives locally under ``%USERPROFILE%\\JARVIS\\toolbox`` (or
 ``JARVIS_DATA_DIR``):
 
 * ``config.json``  - servers, disabled tools, skills (no secret values ever).
@@ -44,7 +44,11 @@ def _now() -> str:
 
 
 def default_dir() -> Path:
-    base = os.getenv("JARVIS_DATA_DIR") or os.path.join(os.getenv("LOCALAPPDATA", str(Path.home())), "JARVIS")
+    # Not %LOCALAPPDATA%: when JARVIS is started from a packaged (MSIX) app such as
+    # the Claude desktop app, Windows silently redirects AppData writes into that
+    # app's private folder, so the data was invisible in File Explorer and missing
+    # when JARVIS was started from its own shortcut. The user profile is not redirected.
+    base = os.getenv("JARVIS_DATA_DIR") or str(Path.home() / "JARVIS")
     return Path(base) / "toolbox"
 
 

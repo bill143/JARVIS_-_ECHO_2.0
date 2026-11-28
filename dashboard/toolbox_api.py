@@ -7,6 +7,7 @@ only ever returns secret *names*. Request bodies and errors never echo values.
 from __future__ import annotations
 
 import asyncio
+import os
 
 import io
 import logging
@@ -182,6 +183,17 @@ def add_toolbox_routes(app: FastAPI, *, authorized: Callable, ok: Callable, err:
                     problems.append(f"{upload.filename}: {exc}")
             toolbox.refresh_skills()
             return ok({"imported": imported, "problems": problems}, 201 if imported else 200)
+        return await guarded(request, action)
+
+    @app.post("/api/toolbox/skills/open-folder")
+    async def open_skills_folder(request: Request):
+        async def action():
+            folder = toolbox.store.skills_dir
+            folder.mkdir(parents=True, exist_ok=True)
+            if not hasattr(os, "startfile"):
+                return err("NOT_SUPPORTED", "Opening folders is only supported on Windows.", 422)
+            os.startfile(str(folder))  # noqa: S606 - fixed local folder, token-protected local API
+            return ok({"folder": str(folder)})
         return await guarded(request, action)
 
     @app.post("/api/toolbox/skills/rescan")

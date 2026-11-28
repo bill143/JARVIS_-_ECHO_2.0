@@ -19,7 +19,10 @@ param(
 
 $ErrorActionPreference = "Stop"
 $Repo = $PSScriptRoot
-$LogDir = Join-Path $env:LOCALAPPDATA "JARVIS\logs"
+# JARVIS data and logs live in %USERPROFILE%\JARVIS (AppData can be redirected
+# for packaged apps, which hid them from File Explorer). JARVIS_DATA_DIR overrides.
+$DataDir = if ($env:JARVIS_DATA_DIR) { $env:JARVIS_DATA_DIR } else { Join-Path $env:USERPROFILE "JARVIS" }
+$LogDir = Join-Path $DataDir "logs"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $EchoUrl = "http://127.0.0.1:4000"
 $DashboardUrl = "http://127.0.0.1:8090/"
