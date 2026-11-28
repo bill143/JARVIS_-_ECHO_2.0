@@ -224,3 +224,10 @@ setInterval(async () => {
     skillsSeen = sig;
   } catch (_) { /* offline: the next tick retries */ }
 }, 5000);
+
+// Secret names are environment-variable style (GITHUB_TOKEN): convert as you type.
+$("secret-name").addEventListener("input", (e) => {
+  const el = e.target;
+  const fixed = el.value.toUpperCase().replace(/[\s.-]+/g, "_").replace(/[^A-Z0-9_]/g, "");
+  if (fixed !== el.value) el.value = fixed;
+});

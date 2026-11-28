@@ -64,7 +64,8 @@
       <p class="hint">API keys and tokens for tool servers. Stored only on this PC and never shown again after saving.</p>
       <form class="add-row" id="secret-form" autocomplete="off">
         <label class="sr-only" for="secret-name">Secret name</label>
-        <input id="secret-name" placeholder="NAME_LIKE_THIS" maxlength="64" pattern="[A-Z][A-Z0-9_]{1,63}" required>
+        <input id="secret-name" placeholder="NAME_LIKE_THIS" maxlength="64" pattern="[A-Z][A-Z0-9_]{1,63}" required
+          title="Capital letters, digits and underscores, starting with a letter (e.g. GITHUB_TOKEN). Typing is converted for you.">
         <label class="sr-only" for="secret-value">Secret value</label>
         <input id="secret-value" type="password" placeholder="value" maxlength="8000" required autocomplete="new-password">
         <button class="btn" type="submit">Save secret</button>
