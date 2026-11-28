@@ -107,6 +107,76 @@ def test_store_crud_softdelete_and_mirror() -> None:
         store.close()
 
 
+def test_groups_migration_keeps_people_and_files_by_relationship() -> None:
+    import sqlite3
+
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        old = PeopleStore(data_dir=tmp / "data", vault=None)  # create the schema
+        old.close()
+        db = sqlite3.connect(tmp / "data" / "people.db")
+        db.execute("DROP TABLE person_groups")  # simulate a database from before groups existed
+        db.execute("DROP TABLE groups")
+        db.execute("DROP TABLE meta")
+        rows = [("a1", "Ann Worker", "Coworker"), ("b2", "Bea Spouse", "wife"), ("c3", "Cal Pal", "friend"),
+                ("d4", "Dan Prop", "rugby teammate"), ("e5", "Eve Client", "client")]
+        for pid, name, rel in rows:
+            db.execute("INSERT INTO people (id, name, relationship, created_at, updated_at) VALUES (?,?,?,?,?)",
+                       (pid, name, rel, "2026-11-27T00:00:00+00:00", "2026-11-27T00:00:00+00:00"))
+        db.commit()
+        db.close()
+
+        store = PeopleStore(data_dir=tmp / "data", vault=tmp / "vault")
+        counts = {g["name"]: g["count"] for g in store.groups()}
+        assert counts == {"Coworkers": 1, "Family": 1, "Friends": 1, "Rugby": 1}, counts
+        assert len(store.list()) == 5 and store.get("e5").groups == []  # nobody lost, client left ungrouped
+        note = (tmp / "vault" / "JARVIS" / "People" / "Ann Worker.md").read_text(encoding="utf-8")
+        assert "tags: [person, coworkers]" in note and "**Groups:** Coworkers" in note
+        store.close()
+        again = PeopleStore(data_dir=tmp / "data", vault=None)  # migration runs once only
+        assert len(again.groups()) == 4
+        again.close()
+
+
+def test_groups_api_create_assign_filter_rename_delete() -> None:
+    with tempfile.TemporaryDirectory() as d:
+        tmp = Path(d)
+        store, _memory, client = make_client(tmp)
+        a = client.post("/api/people", json={"name": "Al Adams", "relationship": "Coworker"}, headers=AUTH).json()["data"]
+        b = client.post("/api/people", json={"name": "Bo Brown"}, headers=AUTH).json()["data"]
+        groups = {g["name"]: g for g in client.get("/api/people/groups", headers=AUTH).json()["data"]["items"]}
+        assert set(groups) == {"Coworkers", "Friends", "Family", "Rugby"}
+
+        golf = client.post("/api/people/groups", json={"name": "Golf"}, headers=AUTH).json()["data"]
+        dup = client.post("/api/people/groups", json={"name": "golf"}, headers=AUTH)
+        assert dup.status_code == 409  # names are unique, case-insensitive
+        r = client.post(f"/api/people/groups/{golf['id']}/members", json={"person_ids": [a["id"], b["id"]]}, headers=AUTH)
+        assert r.json()["data"]["added"] == 2
+        listed = client.get("/api/people", params={"group": golf["id"]}, headers=AUTH).json()["data"]
+        assert [p["name"] for p in listed["items"]] == ["Al Adams", "Bo Brown"]
+        assert {g["name"]: g["count"] for g in listed["groups"]}["Golf"] == 2
+        searched = client.get("/api/people", params={"group": golf["id"], "q": "bo"}, headers=AUTH).json()["data"]
+        assert [p["name"] for p in searched["items"]] == ["Bo Brown"]  # filter + search combine
+
+        # edit form: exact multi-select (Bo leaves Golf, joins Friends)
+        body = {"name": "Bo Brown", "groups": [groups["Friends"]["id"]]}
+        bo = client.put(f"/api/people/{b['id']}", json=body, headers=AUTH).json()["data"]
+        assert bo["groups"] == [groups["Friends"]["id"]]
+
+        renamed = client.put(f"/api/people/groups/{golf['id']}", json={"name": "Golf Club"}, headers=AUTH).json()["data"]
+        assert renamed["name"] == "Golf Club"
+        note = (tmp / "vault" / "JARVIS" / "People" / "Al Adams.md").read_text(encoding="utf-8")
+        assert "golf-club" in note and "coworkers" in note
+
+        assert client.delete(f"/api/people/groups/{golf['id']}", headers=AUTH).status_code == 200
+        people = client.get("/api/people", headers=AUTH).json()["data"]
+        assert people["total"] == 2 and golf["id"] not in [g["id"] for g in people["groups"]]  # people kept
+        assert client.get("/api/people", params={"group": golf["id"]}, headers=AUTH).json()["data"]["items"] == []
+        assert "golf" not in (tmp / "vault" / "JARVIS" / "People" / "Al Adams.md").read_text(encoding="utf-8")
+        assert client.delete(f"/api/people/groups/{golf['id']}", headers=AUTH).status_code == 404
+        store.close()
+
+
 # ---------------------------------------------------------------- recognition
 def test_recognizes_enrolled_face_offline() -> None:
     with tempfile.TemporaryDirectory() as d:
@@ -256,6 +326,8 @@ def test_look_camera_names_recognized_person() -> None:
 
 TESTS = [
     ("store CRUD + soft delete + Obsidian mirror", test_store_crud_softdelete_and_mirror),
+    ("groups migration: people kept, filed by relationship, once", test_groups_migration_keeps_people_and_files_by_relationship),
+    ("groups API: create, assign, filter+search, rename, delete", test_groups_api_create_assign_filter_rename_delete),
     ("recognizes an enrolled face offline", test_recognizes_enrolled_face_offline),
     ("unknown face / nobody enrolled", test_unknown_face_and_no_enrolments),
     ("people API: CRUD, multi-photo upload, recognize", test_people_api_crud_and_photos),

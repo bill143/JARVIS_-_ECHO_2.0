@@ -37,6 +37,17 @@ class PersonBody(BaseModel):
     email: str = Field(default="", max_length=200, pattern=r"^$|^[^@\s]+@[^@\s]+\.[^@\s]+$")
     notes: str = Field(default="", max_length=8000)
     facts: list[str] = Field(default_factory=list, max_length=100)
+    groups: list[str] | None = Field(default=None, max_length=50)  # group ids; None = leave unchanged
+
+
+class GroupBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=60)
+
+
+class MembersBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    person_ids: list[str] = Field(min_length=1, max_length=500)
 
 
 def add_memory_routes(app: FastAPI, *, authorized: Callable, ok: Callable, err: Callable, render_page: Callable,
@@ -113,13 +124,81 @@ def add_memory_routes(app: FastAPI, *, authorized: Callable, ok: Callable, err: 
         return data
 
     @app.get("/api/people")
-    async def list_people(request: Request, q: str = Query(default="", max_length=200)):
+    async def list_people(request: Request, q: str = Query(default="", max_length=200),
+                          group: str = Query(default="", max_length=64)):
         if not authorized(request):
             return deny()
         if people is None:
             return no_people()
-        found = await asyncio.to_thread(people.list, q)
-        return ok({"items": [person_json(p) for p in found], "total": len(found)})
+        found = await asyncio.to_thread(people.list, q, group)
+        groups = await asyncio.to_thread(people.groups)
+        return ok({"items": [person_json(p) for p in found], "total": len(found), "groups": groups})
+
+    # ---- groups (headings people can belong to several of)
+    @app.get("/api/people/groups")
+    async def list_groups(request: Request):
+        if not authorized(request):
+            return deny()
+        if people is None:
+            return no_people()
+        return ok({"items": await asyncio.to_thread(people.groups)})
+
+    @app.post("/api/people/groups")
+    async def create_group(request: Request):
+        if not authorized(request):
+            return deny()
+        if people is None:
+            return no_people()
+        body, problem = await body_of(request, GroupBody)
+        if problem:
+            return problem
+        try:
+            return ok(await asyncio.to_thread(people.create_group, body.name), 201)
+        except ValueError as exc:
+            return err("CONFLICT", str(exc), 409)
+
+    @app.put("/api/people/groups/{group_id}")
+    async def rename_group(group_id: str, request: Request):
+        if not authorized(request):
+            return deny()
+        if people is None:
+            return no_people()
+        body, problem = await body_of(request, GroupBody)
+        if problem:
+            return problem
+        try:
+            return ok(await asyncio.to_thread(people.rename_group, group_id, body.name))
+        except KeyError:
+            return err("NOT_FOUND", "No such group.", 404)
+        except ValueError as exc:
+            return err("CONFLICT", str(exc), 409)
+
+    @app.delete("/api/people/groups/{group_id}")
+    async def delete_group(group_id: str, request: Request):
+        if not authorized(request):
+            return deny()
+        if people is None:
+            return no_people()
+        try:
+            await asyncio.to_thread(people.delete_group, group_id)
+        except KeyError:
+            return err("NOT_FOUND", "No such group.", 404)
+        return ok({"deleted": group_id})
+
+    @app.post("/api/people/groups/{group_id}/members")
+    async def add_group_members(group_id: str, request: Request):
+        if not authorized(request):
+            return deny()
+        if people is None:
+            return no_people()
+        body, problem = await body_of(request, MembersBody)
+        if problem:
+            return problem
+        try:
+            added = await asyncio.to_thread(people.add_to_group, group_id, body.person_ids)
+        except KeyError:
+            return err("NOT_FOUND", "No such group or person.", 404)
+        return ok({"added": added})
 
     @app.post("/api/people")
     async def create_person(request: Request):
@@ -130,7 +209,10 @@ def add_memory_routes(app: FastAPI, *, authorized: Callable, ok: Callable, err: 
         body, problem = await body_of(request, PersonBody)
         if problem:
             return problem
-        person = await asyncio.to_thread(people.create, body.model_dump())
+        try:
+            person = await asyncio.to_thread(people.create, body.model_dump())
+        except KeyError:
+            return err("NOT_FOUND", "No such group.", 404)
         return ok(person_json(person), 201)
 
     @app.get("/api/people/{person_id}")

@@ -54,6 +54,23 @@
         written to your Obsidian vault under <span class="mono">JARVIS/People</span> so JARVIS can read it.
         Face recognition runs offline and only matches people you enroll here.</p>
       <p class="recognize-result" id="recognize-result" role="status"></p>
+      <div class="group-bar" role="toolbar" aria-label="Filter people by group">
+        <div class="group-chips" id="group-chips"></div>
+        <div class="group-actions">
+          <button class="btn small" id="group-rename" type="button" hidden>Rename group</button>
+          <button class="btn small danger" id="group-delete" type="button" hidden>Delete group</button>
+          <button class="btn small" id="group-new" type="button">+ New group</button>
+          <button class="btn small" id="select-toggle" type="button" aria-pressed="false">Select people</button>
+        </div>
+      </div>
+      <div class="bulk-bar" id="bulk-bar" hidden>
+        <span id="bulk-count">0 selected</span>
+        <label class="sr-only" for="bulk-group">Group to add the selected people to</label>
+        <select id="bulk-group"></select>
+        <button class="btn small primary" id="bulk-add" type="button">Add to group</button>
+        <button class="btn small" id="bulk-all" type="button">Select all shown</button>
+        <button class="btn small ghost" id="bulk-clear" type="button">Clear</button>
+      </div>
       <div class="people-grid" id="people-grid"></div>
     </section>
   </main>
@@ -72,6 +89,7 @@
           <label>Email<input name="email" maxlength="200" type="email"></label>
           <label class="wide">Notes<textarea name="notes" rows="3" maxlength="8000"></textarea></label>
           <label class="wide">Facts <span class="dim">(one per line)</span><textarea name="facts" rows="3"></textarea></label>
+          <fieldset class="wide group-pick"><legend>Groups</legend><div id="group-pick"></div></fieldset>
         </div>
         <div class="photos-block" id="photos-block">
           <div class="label">Photos for recognition</div>

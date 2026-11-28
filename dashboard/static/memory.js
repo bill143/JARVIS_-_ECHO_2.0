@@ -121,19 +121,103 @@ $("fact-search").addEventListener("input", () => { clearTimeout(factTimer); fact
 // ---------------------------------------------------------------- people
 let peopleTimer = null;
 let editing = null; // person being edited (null = new)
+let groups = [];      // [{id, name, count}]
+let activeGroup = ""; // "" = All
+let selecting = false;
+const selected = new Set();
+let shown = [];       // people currently listed
 
 async function loadPeople() {
   const grid = $("people-grid");
+  const q = $("people-search").value.trim();
   try {
-    const data = await api(`/api/people?q=${encodeURIComponent($("people-search").value.trim())}`);
-    $("count-people").textContent = String(data.total);
-    grid.replaceChildren(...(data.items.length ? data.items.map(personCard)
-      : [el("div", "empty", "No people yet. Add someone with “+ New person”.")]));
+    const all = await api(`/api/people?q=${encodeURIComponent(q)}`);
+    groups = all.groups || [];
+    if (activeGroup && !groups.some((g) => g.id === activeGroup)) activeGroup = "";
+    const data = activeGroup
+      ? await api(`/api/people?q=${encodeURIComponent(q)}&group=${encodeURIComponent(activeGroup)}`)
+      : all;
+    if (!q) $("count-people").textContent = String(all.total);
+    renderGroupBar(all.total);
+    shown = data.items;
+    const groupName = groups.find((g) => g.id === activeGroup)?.name;
+    let empty = q ? "No matching people." : "No people yet. Add someone with “+ New person”.";
+    if (groupName) empty = q ? `Nobody in ${groupName} matches.` : `Nobody in ${groupName} yet.`;
+    grid.replaceChildren(...(data.items.length ? data.items.map(personCard) : [el("div", "empty", empty)]));
   } catch (err) {
     grid.replaceChildren(el("div", "empty", `Could not load people: ${err.message}`));
   }
+  renderBulkBar();
   updateTotal();
 }
+
+// ---------------------------------------------------------------- groups
+function renderGroupBar(totalShown) {
+  const chip = (id, name, count) => {
+    const b = el("button", "group-chip");
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(activeGroup === id));
+    b.append(el("span", "", name), el("span", "n", String(count)));
+    b.addEventListener("click", () => { activeGroup = id; loadPeople(); });
+    return b;
+  };
+  $("group-chips").replaceChildren(chip("", "All", totalShown), ...groups.map((g) => chip(g.id, g.name, g.count)));
+  $("group-rename").hidden = !activeGroup;
+  $("group-delete").hidden = !activeGroup;
+  const pick = $("bulk-group");
+  const keep = pick.value;
+  pick.replaceChildren(...groups.map((g) => { const o = el("option", "", g.name); o.value = g.id; return o; }));
+  if (groups.some((g) => g.id === keep)) pick.value = keep;
+  else if (activeGroup) pick.value = activeGroup;
+}
+
+$("group-new").addEventListener("click", async () => {
+  const name = (prompt("Name of the new group (for example Clients or Golf):") || "").trim();
+  if (!name) return;
+  try {
+    const g = await api("/api/people/groups", { method: "POST", body: { name } });
+    activeGroup = g.id;
+    loadPeople();
+  } catch (err) { alert(err.message); }
+});
+$("group-rename").addEventListener("click", async () => {
+  const g = groups.find((x) => x.id === activeGroup);
+  if (!g) return;
+  const name = (prompt(`Rename the group ${g.name} to:`, g.name) || "").trim();
+  if (!name || name === g.name) return;
+  try { await api(`/api/people/groups/${g.id}`, { method: "PUT", body: { name } }); loadPeople(); }
+  catch (err) { alert(err.message); }
+});
+$("group-delete").addEventListener("click", async () => {
+  const g = groups.find((x) => x.id === activeGroup);
+  if (!g) return;
+  if (!confirm(`Delete the group ${g.name}? The ${g.count} people in it are kept; they just leave this group.`)) return;
+  try { await api(`/api/people/groups/${g.id}`, { method: "DELETE" }); activeGroup = ""; loadPeople(); }
+  catch (err) { alert(err.message); }
+});
+
+// ---------------------------------------------------------------- bulk select
+function renderBulkBar() {
+  $("bulk-bar").hidden = !selecting;
+  $("select-toggle").setAttribute("aria-pressed", String(selecting));
+  $("select-toggle").textContent = selecting ? "Done selecting" : "Select people";
+  $("bulk-count").textContent = `${selected.size} selected`;
+  $("bulk-add").disabled = !selected.size || !groups.length;
+}
+$("select-toggle").addEventListener("click", () => { selecting = !selecting; selected.clear(); loadPeople(); });
+$("bulk-clear").addEventListener("click", () => { selected.clear(); loadPeople(); });
+$("bulk-all").addEventListener("click", () => { shown.forEach((p) => selected.add(p.id)); loadPeople(); });
+$("bulk-add").addEventListener("click", async () => {
+  const gid = $("bulk-group").value;
+  const g = groups.find((x) => x.id === gid);
+  if (!g || !selected.size) return;
+  try {
+    const r = await api(`/api/people/groups/${gid}/members`, { method: "POST", body: { person_ids: [...selected] } });
+    $("recognize-result").textContent = `Added ${r.added} ${r.added === 1 ? "person" : "people"} to ${g.name}.`;
+    selected.clear();
+    loadPeople();
+  } catch (err) { alert(err.message); }
+});
 
 function personCard(p) {
   const card = el("button", "person");
@@ -155,9 +239,33 @@ function personCard(p) {
   const faces = p.photos.filter((ph) => ph.has_face).length;
   chips.append(el("span", `chip ${faces ? "ok" : "warn"}`, faces ? `${faces} face${faces === 1 ? "" : "s"} enrolled` : "no face photo"));
   if (p.facts.length) chips.append(el("span", "chip", `${p.facts.length} fact${p.facts.length === 1 ? "" : "s"}`));
+  for (const gid of p.groups || []) {
+    const g = groups.find((x) => x.id === gid);
+    if (g) chips.append(el("span", "chip group", g.name));
+  }
   info.append(chips);
   card.append(avatar, info);
-  card.addEventListener("click", () => openEditor(p));
+  if (!selecting) {
+    card.addEventListener("click", () => openEditor(p));
+    return card;
+  }
+  const isOn = () => selected.has(p.id);
+  card.classList.add("selectable");
+  card.setAttribute("aria-label", `Select ${p.name}`);
+  const box = el("input", "pick");
+  box.type = "checkbox"; box.tabIndex = -1; box.setAttribute("aria-hidden", "true");
+  const paint = () => {
+    card.classList.toggle("selected", isOn());
+    card.setAttribute("aria-pressed", String(isOn()));
+    box.checked = isOn();
+  };
+  card.append(box);
+  paint();
+  card.addEventListener("click", () => {
+    if (isOn()) selected.delete(p.id); else selected.add(p.id);
+    paint();
+    renderBulkBar();
+  });
   return card;
 }
 
@@ -179,9 +287,22 @@ function openEditor(person) {
   $("delete-person").hidden = !person;
   for (const f of FIELDS) form.elements[f].value = person ? person[f] || "" : "";
   form.elements.facts.value = person ? person.facts.join("\n") : "";
+  renderGroupPick(person ? person.groups || [] : (activeGroup ? [activeGroup] : []));
   renderPhotos();
   $("modal").hidden = false;
   form.elements.name.focus();
+}
+
+function renderGroupPick(memberOf) {
+  const box = $("group-pick");
+  if (!groups.length) { box.replaceChildren(el("span", "dim", "No groups yet. Use “+ New group”.")); return; }
+  box.replaceChildren(...groups.map((g) => {
+    const label = el("label");
+    const cb = el("input");
+    cb.type = "checkbox"; cb.value = g.id; cb.checked = memberOf.includes(g.id);
+    label.append(cb, document.createTextNode(g.name));
+    return label;
+  }));
 }
 
 function closeEditor() { $("modal").hidden = true; editing = null; loadPeople(); }
@@ -234,6 +355,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const body = Object.fromEntries(FIELDS.map((f) => [f, form.elements[f].value.trim()]));
   body.facts = form.elements.facts.value.split("\n").map((s) => s.trim()).filter(Boolean);
+  body.groups = [...$("group-pick").querySelectorAll("input:checked")].map((i) => i.value);
   try {
     const wasNew = !editing;
     editing = wasNew ? await api("/api/people", { method: "POST", body })
