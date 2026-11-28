@@ -222,11 +222,47 @@ def test_api_and_page() -> None:
         assert SECRET_VALUE not in json.dumps(config)
 
 
+def _skill_md(name: str) -> str:
+    return chr(10).join(["---", f"name: {name}", f"description: Test skill {name}.", "---", f"Do the {name} thing.", ""])
+
+
+def test_skills_folder_scan_nested_and_zip() -> None:
+    import zipfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        store = ToolboxStore(Path(tmp), seed_presets=False)
+        drop = store.skills_dir
+        (drop / "single-skill").mkdir()
+        (drop / "single-skill" / "SKILL.md").write_text(_skill_md("single-skill"), encoding="utf-8")
+        pack = drop / "My Skill Pack" / "estimating"          # folder of skill folders
+        (pack / "takeoff-helper").mkdir(parents=True)
+        (pack / "takeoff-helper" / "SKILL.md").write_text(_skill_md("takeoff-helper"), encoding="utf-8")
+        (drop / "broken").mkdir()
+        (drop / "broken" / "SKILL.md").write_text("no frontmatter here", encoding="utf-8")
+        with zipfile.ZipFile(drop / "bundle.zip", "w") as z:
+            z.writestr("bundle/zip-skill-one/SKILL.md", _skill_md("zip-skill-one"))
+            z.writestr("bundle/zip-skill-two/SKILL.md", _skill_md("zip-skill-two"))
+            z.writestr("__MACOSX/bundle/._SKILL.md", "junk")
+            z.writestr("../escape/SKILL.md", _skill_md("escape-attempt"))   # read in memory only
+
+        first = store.scan_skill_folder()
+        names = sorted(first["imported"])
+        assert names == ["escape-attempt", "single-skill", "takeoff-helper", "zip-skill-one", "zip-skill-two"], first
+        assert any("broken/SKILL.md" in p for p in first["problems"]), first["problems"]
+        assert not (Path(tmp).parent / "escape").exists()  # nothing written outside the store
+        assert {s["name"] for s in store.skills()} >= set(names)
+        assert "Do the takeoff-helper thing." in store.skill_body("takeoff-helper")
+
+        second = store.scan_skill_folder()      # safe to repeat
+        assert second["imported"] == [] and second["skipped"] >= 5, second
+
+
 TESTS = [
     ("store: presets, validation, write-only secrets, skills", test_store_presets_validation_secrets_skills),
     ("runtime: add server live -> brain has its tools; switches", test_runtime_adds_server_live_and_switches_tools),
     ("documents server is read-only and jailed to its folder", test_documents_server_is_read_only_and_jailed),
     ("API + /tools page (no secret ever returned)", test_api_and_page),
+    ("skills folder: nested folders + zips load once, bad files reported", test_skills_folder_scan_nested_and_zip),
 ]
 
 if __name__ == "__main__":

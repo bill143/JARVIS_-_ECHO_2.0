@@ -79,6 +79,10 @@ class ToolboxRuntime:
 
     # ---- lifecycle -----------------------------------------------------
     async def start(self) -> None:
+        # Skills copied into the skills folder while JARVIS was off.
+        found = await asyncio.to_thread(self.store.scan_skill_folder)
+        if found["imported"]:
+            print(f"[JARVIS] Skills folder: loaded {len(found['imported'])} new skill(s)", flush=True)
         for server in self.store.servers():
             if server["enabled"]:
                 await self._connect(server)

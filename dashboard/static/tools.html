@@ -47,10 +47,13 @@
 
     <section class="card" aria-labelledby="h-skills">
       <div class="card-head"><span class="card-icon">✎</span><h2 id="h-skills">Skills</h2>
+        <button class="btn" id="skill-rescan" type="button">Rescan skills folder</button>
         <label class="btn" for="skill-input">Import SKILL.md / .zip</label>
         <input id="skill-input" type="file" accept=".md,.zip" multiple hidden></div>
       <p class="hint">A skill is a SKILL.md file (agentskills.io format): a name, a description and written instructions.
         JARVIS sees the name and description and reads the full instructions when a request needs them.</p>
+      <p class="hint">Bulk add: copy skill folders (each with a SKILL.md), folders of skill folders, or .zip files into
+        <code id="skills-folder">the skills folder</code>. They load when this page opens, when JARVIS starts, or with Rescan.</p>
       <p class="hint" id="skill-status" role="status"></p>
       <ul class="tool-list" id="skill-list"></ul>
     </section>

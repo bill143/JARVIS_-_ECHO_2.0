@@ -8,6 +8,9 @@ Everything lives locally under ``%LOCALAPPDATA%\\JARVIS\\toolbox`` (or
   ``set_secret``; the API returns names and "is set", never values, and nothing
   here is logged.
 * ``skills/<name>/SKILL.md`` - imported skills (agentskills.io format).
+  The ``skills`` folder is also a drop folder: skill folders, folders of skill
+  folders and .zip files copied into it are picked up by ``scan_skill_folder``
+  (at startup, when the Skills & Tools page opens, and by its Rescan button).
 """
 
 from __future__ import annotations
@@ -19,6 +22,7 @@ import re
 import sys
 import threading
 import uuid
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,6 +32,10 @@ TRANSPORTS = ("stdio", "http", "sse")
 _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _().-]{0,63}$")
 _SECRET_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,63}$")
 _SKILL_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+MAX_SKILL_FILE_BYTES = 512 * 1024
+MAX_SKILL_ZIP_BYTES = 200 * 1024 * 1024
+MAX_SCANNED_SKILLS = 2000
+_SKIP_DIRS = {"__MACOSX", ".git", "node_modules", "__pycache__"}
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -250,6 +258,72 @@ class ToolboxStore:
             self._config["skills"] = [s for s in self._config["skills"] if s["name"] != name] + [entry]
             self._save()
             return dict(entry)
+
+    def scan_skill_folder(self) -> dict:
+        """Register every new SKILL.md found under the skills folder (nested folders and .zip files).
+
+        Skills already registered (by name) are left alone, so a rescan is safe to
+        repeat. Returns ``{"imported": [names], "skipped": n, "problems": [text]}``.
+        """
+        known = {s["name"] for s in self.skills()}
+        imported: list[str] = []
+        problems: list[str] = []
+        skipped = 0
+        for source, text in self._skill_texts_in_folder(problems):
+            try:
+                meta, _ = parse_skill_md(text)
+            except ValueError as exc:
+                problems.append(f"{source}: {exc}")
+                continue
+            if meta["name"] in known:
+                skipped += 1
+                continue
+            try:
+                self.import_skill(text, source=f"folder:{source}")
+            except (ValueError, OSError) as exc:
+                problems.append(f"{source}: {exc}")
+                continue
+            known.add(meta["name"])
+            imported.append(meta["name"])
+        return {"imported": imported, "skipped": skipped, "problems": problems[:50]}
+
+    def _skill_texts_in_folder(self, problems: list[str]):
+        """Yield ``(source, SKILL.md text)`` for loose SKILL.md files and SKILL.md inside zips."""
+        root = self.skills_dir
+        count = 0
+        for current, dirs, files in os.walk(root):
+            dirs[:] = sorted(d for d in dirs if d not in _SKIP_DIRS and not d.startswith("."))
+            for filename in sorted(files):
+                if count >= MAX_SCANNED_SKILLS:
+                    problems.append(f"Stopped after {MAX_SCANNED_SKILLS} skills.")
+                    return
+                path = Path(current) / filename
+                rel = path.relative_to(root).as_posix()
+                try:
+                    if filename == "SKILL.md":
+                        if path.stat().st_size > MAX_SKILL_FILE_BYTES:
+                            problems.append(f"{rel}: larger than 512 KB")
+                            continue
+                        count += 1
+                        yield rel, path.read_text(encoding="utf-8", errors="replace")
+                    elif filename.lower().endswith(".zip"):
+                        if path.stat().st_size > MAX_SKILL_ZIP_BYTES:
+                            problems.append(f"{rel}: zip larger than 200 MB")
+                            continue
+                        with zipfile.ZipFile(path) as archive:
+                            for info in archive.infolist():
+                                inner = info.filename.replace("\\", "/")
+                                if inner.split("/")[-1] != "SKILL.md" or "__MACOSX" in inner:
+                                    continue
+                                if info.file_size > MAX_SKILL_FILE_BYTES:
+                                    problems.append(f"{rel}:{inner}: larger than 512 KB")
+                                    continue
+                                count += 1
+                                # Read in memory only: nothing from the zip is written
+                                # to disk except the validated SKILL.md (import_skill).
+                                yield f"{rel}:{inner}", archive.read(info).decode("utf-8", "replace")
+                except (OSError, zipfile.BadZipFile) as exc:
+                    problems.append(f"{rel}: {exc}")
 
     def skill_body(self, name: str) -> str:
         if not any(s["name"] == name for s in self.skills()):

@@ -119,6 +119,7 @@ async function load() {
   try { data = await api("/api/toolbox"); }
   catch (err) { $("server-list").replaceChildren(el("p", "empty", `Could not load tools: ${err.message}`)); return; }
   $("active-count").textContent = `${data.active_tool_count} active tools`;
+  if (data.skills_folder) $("skills-folder").textContent = data.skills_folder;
   $("server-list").replaceChildren(...(data.servers.length ? data.servers.map(serverCard)
     : [el("p", "empty", "No tool servers yet. Add one, or pick a one-click tool below.")]));
   $("catalog").replaceChildren(...data.catalog.map(catalogItem));
@@ -183,6 +184,19 @@ $("skill-input").addEventListener("change", async (e) => {
   } catch (err) { $("skill-status").textContent = err.message; }
   load();
 });
+async function rescanSkills(quiet) {
+  if (!quiet) $("skill-status").textContent = "Scanning the skills folder…";
+  try {
+    const r = await api("/api/toolbox/skills/rescan", { method: "POST", body: {} });
+    const parts = [];
+    if (r.imported.length) parts.push(`Loaded from folder: ${r.imported.join(", ")}.`);
+    else if (!quiet) parts.push(`No new skills (${r.skipped} already loaded).`);
+    if (r.problems.length) parts.push(...r.problems);
+    if (parts.length) $("skill-status").textContent = parts.join(" ");
+    if (r.imported.length) load();
+  } catch (err) { if (!quiet) $("skill-status").textContent = err.message; }
+}
+$("skill-rescan").addEventListener("click", () => rescanSkills(false));
 $("secret-form").addEventListener("submit", async (e) => {
   e.preventDefault();
   const name = $("secret-name"); const value = $("secret-value");
@@ -193,3 +207,4 @@ $("secret-form").addEventListener("submit", async (e) => {
 });
 
 load();
+rescanSkills(true);  // pick up skills copied into the folder
