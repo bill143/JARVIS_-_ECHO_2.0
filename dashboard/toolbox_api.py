@@ -199,9 +199,7 @@ def add_toolbox_routes(app: FastAPI, *, authorized: Callable, ok: Callable, err:
     @app.post("/api/toolbox/skills/rescan")
     async def rescan_skills(request: Request):
         async def action():
-            result = await asyncio.to_thread(toolbox.store.scan_skill_folder)
-            if result["imported"]:
-                toolbox.refresh_skills()
+            result = await toolbox.sync_skill_folder()
             return ok({**result, "folder": str(toolbox.store.skills_dir)})
         return await guarded(request, action)
 

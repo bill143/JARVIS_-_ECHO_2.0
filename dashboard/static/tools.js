@@ -190,10 +190,12 @@ async function rescanSkills(quiet) {
     const r = await api("/api/toolbox/skills/rescan", { method: "POST", body: {} });
     const parts = [];
     if (r.imported.length) parts.push(`Loaded from folder: ${r.imported.join(", ")}.`);
-    else if (!quiet) parts.push(`No new skills (${r.skipped} already loaded).`);
+    if (r.updated.length) parts.push(`Updated: ${r.updated.join(", ")}.`);
+    if (r.removed.length) parts.push(`Removed: ${r.removed.join(", ")}.`);
+    if (!parts.length && !quiet) parts.push(`No changes (${r.skipped} skills loaded).`);
     if (r.problems.length) parts.push(...r.problems);
     if (parts.length) $("skill-status").textContent = parts.join(" ");
-    if (r.imported.length) load();
+    if (r.imported.length || r.updated.length || r.removed.length) load();
   } catch (err) { if (!quiet) $("skill-status").textContent = err.message; }
 }
 $("skill-rescan").addEventListener("click", () => rescanSkills(false));
@@ -212,3 +214,13 @@ $("secret-form").addEventListener("submit", async (e) => {
 
 load();
 rescanSkills(true);  // pick up skills copied into the folder
+// JARVIS watches the skills folder; keep this list in step without a refresh.
+let skillsSeen = "";
+setInterval(async () => {
+  try {
+    const data = await api("/api/toolbox");
+    const sig = JSON.stringify(data.skills.map((x) => [x.name, x.enabled, x.description]));
+    if (skillsSeen && sig !== skillsSeen) load();
+    skillsSeen = sig;
+  } catch (_) { /* offline: the next tick retries */ }
+}, 5000);

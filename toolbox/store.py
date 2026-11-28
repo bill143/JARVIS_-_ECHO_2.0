@@ -264,32 +264,89 @@ class ToolboxStore:
             return dict(entry)
 
     def scan_skill_folder(self) -> dict:
-        """Register every new SKILL.md found under the skills folder (nested folders and .zip files).
+        """Sync the registered skills with the skills (drop) folder.
 
-        Skills already registered (by name) are left alone, so a rescan is safe to
-        repeat. Returns ``{"imported": [names], "skipped": n, "problems": [text]}``.
+        * new SKILL.md (loose, nested at any depth, or inside a .zip) -> registered
+        * a dropped SKILL.md whose text changed -> re-imported (on/off kept)
+        * a skill whose own folder (``skills/<name>``) was deleted, or that came from a
+          dropped folder / zip that is gone -> removed
+        Unchanged skills are left alone, so this is safe to repeat. Returns
+        ``{"imported", "updated", "removed": [names], "skipped": n, "problems": [text]}``.
         """
-        known = {s["name"] for s in self.skills()}
+        registered = {s["name"]: s for s in self.skills()}
         imported: list[str] = []
+        updated: list[str] = []
         problems: list[str] = []
         skipped = 0
+        seen: set[str] = set()
+        handled: set[str] = set()
         for source, text in self._skill_texts_in_folder(problems):
+            seen.add(source)
             try:
                 meta, _ = parse_skill_md(text)
             except ValueError as exc:
                 problems.append(f"{source}: {exc}")
                 continue
-            if meta["name"] in known:
+            name = meta["name"]
+            canonical = f"{name}/SKILL.md"
+            if name in handled:
                 skipped += 1
                 continue
+            entry = registered.get(name)
             try:
-                self.import_skill(text, source=f"folder:{source}")
+                if entry is None:
+                    self.import_skill(text, source=f"folder:{source}")
+                    imported.append(name)
+                elif source != canonical and text != self._canonical_text(name):
+                    self.import_skill(text, source=f"folder:{source}")
+                    self.set_skill_enabled(name, entry["enabled"])
+                    updated.append(name)
+                elif source == canonical and meta["description"] != entry["description"]:
+                    self.import_skill(text, source=entry.get("source", "folder"))
+                    self.set_skill_enabled(name, entry["enabled"])
+                    updated.append(name)
+                else:
+                    skipped += 1
             except (ValueError, OSError) as exc:
                 problems.append(f"{source}: {exc}")
                 continue
-            known.add(meta["name"])
-            imported.append(meta["name"])
-        return {"imported": imported, "skipped": skipped, "problems": problems[:50]}
+            if source != canonical:
+                handled.add(name)
+        removed: list[str] = []
+        for name, entry in registered.items():
+            origin = str(entry.get("source", ""))
+            dropped_from = origin[len("folder:"):] if origin.startswith("folder:") else ""
+            gone = f"{name}/SKILL.md" not in seen or (
+                dropped_from and dropped_from != f"{name}/SKILL.md" and dropped_from not in seen)
+            if gone:
+                try:
+                    self.remove_skill(name)
+                    removed.append(name)
+                except KeyError:
+                    pass
+        return {"imported": imported, "updated": updated, "removed": removed, "skipped": skipped,
+                "problems": problems[:50]}
+
+    def _canonical_text(self, name: str) -> str:
+        path = self.skills_dir / name / "SKILL.md"
+        try:
+            return path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            return ""
+
+    def folder_signature(self) -> tuple:
+        """Cheap fingerprint of the drop folder (paths, sizes, mtimes of SKILL.md and .zip files)."""
+        items = []
+        for current, dirs, files in os.walk(self.skills_dir):
+            dirs[:] = sorted(d for d in dirs if d not in _SKIP_DIRS and not d.startswith("."))
+            for filename in files:
+                if filename == "SKILL.md" or filename.lower().endswith(".zip"):
+                    try:
+                        st = (Path(current) / filename).stat()
+                    except OSError:
+                        continue
+                    items.append((current, filename, st.st_size, st.st_mtime_ns))
+        return tuple(sorted(items))
 
     def _skill_texts_in_folder(self, problems: list[str]):
         """Yield ``(source, SKILL.md text)`` for loose SKILL.md files and SKILL.md inside zips."""

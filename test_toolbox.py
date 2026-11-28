@@ -254,7 +254,28 @@ def test_skills_folder_scan_nested_and_zip() -> None:
         assert "Do the takeoff-helper thing." in store.skill_body("takeoff-helper")
 
         second = store.scan_skill_folder()      # safe to repeat
-        assert second["imported"] == [] and second["skipped"] >= 5, second
+        assert second["imported"] == second["updated"] == second["removed"] == [], second
+        sig = store.folder_signature()
+        assert sig == store.folder_signature()  # stable when nothing changes
+
+        # an edited dropped skill is re-imported, keeping its on/off switch
+        store.set_skill_enabled("takeoff-helper", False)
+        edited = _skill_md("takeoff-helper").replace("Test skill", "Edited skill")
+        (pack / "takeoff-helper" / "SKILL.md").write_text(edited, encoding="utf-8")
+        assert store.folder_signature() != sig
+        third = store.scan_skill_folder()
+        assert third["updated"] == ["takeoff-helper"], third
+        entry = next(x for x in store.skills() if x["name"] == "takeoff-helper")
+        assert entry["description"].startswith("Edited") and entry["enabled"] is False
+
+        # removing the pack, the zip and a skill folder drops those skills
+        import shutil
+        shutil.rmtree(drop / "My Skill Pack")
+        (drop / "bundle.zip").unlink()
+        shutil.rmtree(drop / "single-skill")
+        fourth = store.scan_skill_folder()
+        assert sorted(fourth["removed"]) == ["escape-attempt", "single-skill", "takeoff-helper", "zip-skill-one", "zip-skill-two"], fourth
+        assert store.skills() == []
 
 
 TESTS = [
@@ -262,7 +283,7 @@ TESTS = [
     ("runtime: add server live -> brain has its tools; switches", test_runtime_adds_server_live_and_switches_tools),
     ("documents server is read-only and jailed to its folder", test_documents_server_is_read_only_and_jailed),
     ("API + /tools page (no secret ever returned)", test_api_and_page),
-    ("skills folder: nested folders + zips load once, bad files reported", test_skills_folder_scan_nested_and_zip),
+    ("skills folder: nested + zips load, edits update, deletions remove", test_skills_folder_scan_nested_and_zip),
 ]
 
 if __name__ == "__main__":

@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 CONNECT_TIMEOUT_SECS = 45.0
 READ_SKILL = "read_skill"
+SKILLS_WATCH_SECS = float(os.getenv("SKILLS_WATCH_SECS", "15") or 15)
 
 
 def server_params(server: dict, store: ToolboxStore):
@@ -76,13 +77,14 @@ class ToolboxRuntime:
         self._status: dict[str, dict] = {}
         self._lock = asyncio.Lock()
         llm.register_function(READ_SKILL, self._read_skill)
+        self._watch_task: asyncio.Task | None = None
+        self._folder_signature: tuple | None = None
 
     # ---- lifecycle -----------------------------------------------------
     async def start(self) -> None:
-        # Skills copied into the skills folder while JARVIS was off.
-        found = await asyncio.to_thread(self.store.scan_skill_folder)
-        if found["imported"]:
-            print(f"[JARVIS] Skills folder: loaded {len(found['imported'])} new skill(s)", flush=True)
+        # Skills copied into the skills folder while JARVIS was off, then keep watching it.
+        await self.sync_skill_folder()
+        self._watch_task = asyncio.create_task(self._watch_skill_folder())
         for server in self.store.servers():
             if server["enabled"]:
                 await self._connect(server)
@@ -91,8 +93,33 @@ class ToolboxRuntime:
         self._apply()
 
     async def close(self) -> None:
+        if self._watch_task is not None:
+            self._watch_task.cancel()
         for server_id in list(self._clients):
             await self._disconnect(server_id)
+
+    # ---- skills drop folder ------------------------------------------------
+    async def sync_skill_folder(self) -> dict:
+        """Load new / changed skills from the skills folder and drop removed ones."""
+        self._folder_signature = await asyncio.to_thread(self.store.folder_signature)
+        found = await asyncio.to_thread(self.store.scan_skill_folder)
+        changes = [(k, found[k]) for k in ("imported", "updated", "removed") if found[k]]
+        if changes:
+            self._apply()
+            summary = ", ".join(f"{k} {len(v)}" for k, v in changes)
+            print(f"[JARVIS] Skills folder: {summary} ({', '.join(n for _, v in changes for n in v)[:300]})", flush=True)
+        return found
+
+    async def _watch_skill_folder(self) -> None:
+        """Every SKILLS_WATCH_SECS, rescan only if a SKILL.md or .zip was added, changed or removed."""
+        while True:
+            await asyncio.sleep(SKILLS_WATCH_SECS)
+            try:
+                signature = await asyncio.to_thread(self.store.folder_signature)
+                if signature != self._folder_signature:
+                    await self.sync_skill_folder()
+            except Exception as exc:  # noqa: BLE001 - the watcher must survive a bad file
+                logger.warning("skills folder watch failed: %s", exc)
 
     async def _connect(self, server: dict) -> None:
         self._status[server["id"]] = {"state": "connecting"}
